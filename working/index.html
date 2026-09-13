@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- build:2026-09-13T15:21Z-copyText-fix -->
+<!-- build:2026-09-13T15:35Z-skinny-filters-desk-pin-select -->
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
 <title>Cash Basis Map · v1.4-working</title>
@@ -301,6 +301,118 @@
   #sourcesList a:hover { text-decoration:underline; }
   #sourcesList .src-meta { color:var(--muted); font-size:11px; margin-left:4px; }
 
+
+  /* Desk modal */
+  #deskModal {
+    display:none; position:fixed; inset:0; z-index:1200;
+    background:rgba(15,23,32,.45); align-items:flex-end; justify-content:center;
+  }
+  #deskModal.open { display:flex; }
+  #deskSheet {
+    background:#fff; width:min(720px, 100%); max-height:min(82dvh, 780px);
+    border-radius:16px 16px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.2);
+    display:flex; flex-direction:column; padding-bottom: calc(12px + var(--safe-bottom));
+  }
+  #deskSheet .sheet-top { padding:10px 16px 8px; border-bottom:1px solid var(--border); }
+  #deskSheet .sheet-handle { width:42px; height:5px; border-radius:999px; background:#afb8c1; margin:4px auto 10px; }
+  #deskSheet h3 { margin:0 0 4px; font-size:16px; }
+  #deskSheet .sheet-meta { font-size:12px; color:var(--muted); margin-bottom:8px; }
+  #deskSheet .sheet-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  #deskSheet .sheet-actions button { flex:1; min-width:100px; padding:10px 12px; font-size:14px; }
+  #deskBody { overflow:auto; -webkit-overflow-scrolling:touch; padding:12px 16px 16px; }
+  #deskOffNote { display:none; margin-bottom:12px; }
+  #deskOffNote.show { display:block; }
+  #deskTools { display:none; }
+  #deskTools.show { display:block; }
+  #deskModal #chsLocations, #deskModal #gapRadar { display:none; margin-top:12px; border-top:1px solid var(--border); padding-top:12px; }
+  #deskModal #chsLocations.open, #deskModal #gapRadar.open { display:block; }
+  #deskModal #copyDeskBtn { display:none; width:100%; margin-top:10px; }
+  #deskModal #copyDeskBtn.show { display:inline-flex; }
+  #deskModal #sourcesBox { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
+  @media (min-width: 861px) {
+    #deskModal { align-items:center; padding:24px; }
+    #deskSheet { border-radius:16px; max-height:min(80vh, 780px); }
+    #deskSheet .sheet-handle { display:none; }
+  }
+
+  /* Pin card modal */
+  #pinModal {
+    display:none; position:fixed; inset:0; z-index:1250;
+    background:rgba(15,23,32,.40); align-items:flex-end; justify-content:center;
+  }
+  #pinModal.open { display:flex; }
+  #pinSheet {
+    background:#fff; width:min(520px, 100%); max-height:min(78dvh, 680px);
+    border-radius:16px 16px 0 0; box-shadow:0 -8px 32px rgba(0,0,0,.2);
+    display:flex; flex-direction:column; padding-bottom: calc(12px + var(--safe-bottom));
+  }
+  #pinSheet .sheet-top { padding:10px 16px 8px; border-bottom:1px solid var(--border); }
+  #pinSheet .sheet-handle { width:42px; height:5px; border-radius:999px; background:#afb8c1; margin:4px auto 10px; }
+  #pinSheet h3 { margin:0 0 4px; font-size:15px; }
+  #pinSheet .sheet-meta { font-size:12px; color:var(--muted); margin-bottom:8px; }
+  #pinSheet .sheet-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  #pinSheet .sheet-actions button { flex:1; min-width:90px; padding:10px 12px; font-size:13px; }
+  #pinBody { overflow:auto; -webkit-overflow-scrolling:touch; padding:8px 16px 16px; }
+  #pinBody .table-wrap { margin-top:4px; }
+  @media (min-width: 861px) {
+    #pinModal { align-items:center; padding:24px; }
+    #pinSheet { border-radius:16px; max-height:min(80vh, 640px); }
+    #pinSheet .sheet-handle { display:none; }
+  }
+
+  /* Selection tray */
+  #selTray {
+    display:none; position:fixed; left:12px; right:12px; bottom:12px; z-index:1150;
+    background:rgba(255,255,255,.98); border:1px solid var(--border); border-radius:14px;
+    box-shadow:0 8px 28px rgba(0,0,0,.16); max-height:min(42dvh, 360px);
+    flex-direction:column; padding-bottom: calc(8px + var(--safe-bottom));
+  }
+  #selTray.open { display:flex; }
+  #selTray .sel-top {
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 12px 6px; border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  #selTray .sel-top h3 { margin:0; font-size:14px; }
+  #selTray .sel-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  #selTray .sel-actions button { flex:0; padding:8px 10px; font-size:12px; }
+  #selBody { overflow:auto; -webkit-overflow-scrolling:touch; padding:8px 12px 12px; }
+  .sel-row {
+    display:flex; align-items:flex-start; gap:8px; border:1px solid var(--border);
+    border-radius:10px; padding:8px 10px; margin:6px 0; background:#fafbfc; font-size:12px;
+  }
+  .sel-row .sel-main { flex:1; min-width:0; }
+  .sel-row .sel-main strong { display:block; font-size:13px; }
+  .sel-row .sel-bids { color:var(--muted); margin-top:4px; white-space:pre-wrap; line-height:1.35; }
+  .sel-row .sel-x { flex:0; padding:6px 10px; font-size:12px; }
+  @media (min-width: 861px) {
+    #selTray { left:auto; right:12px; width:min(420px, 38vw); bottom:56px; }
+  }
+
+  /* Selected pin ring */
+  .bid-marker.sel-ring .bid-dot {
+    box-shadow: 0 0 0 3px #bf8700, 0 1px 3px rgba(0,0,0,.28);
+    border-width: 3px; border-color: #fff;
+  }
+  .bid-marker.chs-ring.sel-ring .bid-dot {
+    box-shadow: 0 0 0 3px #0550ae, 0 0 0 6px #bf8700, 0 1px 3px rgba(0,0,0,.28);
+  }
+  #selectModeBtn.on {
+    background:#bf8700; color:#fff; border-color:#bf8700;
+  }
+  #desktopBar #desktopDeskBtn, #mobileBar #mobileDeskBtn, #mobileBar #selectModeBtn {
+    background:rgba(255,255,255,.96); color:var(--text); border:1px solid var(--border);
+    border-radius:999px; padding:10px 14px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,.12);
+  }
+  #mobileBar { flex-wrap:wrap; gap:6px; }
+  @media (max-width: 860px) {
+    #mobileBar { top:8px; }
+    #selectModeBtn { display:inline-flex; }
+  }
+  @media (min-width: 861px) {
+    #selectModeBtn { display:none !important; }
+  }
+  #sidebarDetail { display:none !important; }
+
 </style>
 </head>
 <body>
@@ -309,11 +421,10 @@
     <div id="sheetHandle"></div>
     <h1>Cash Basis Map</h1>
     <div class="ver"><span class="pill">v1.4-working</span><span>experimental · v1.3 locked</span></div>
-    <div class="sub">Empty bubble · stacked months under pin · tap for copy panel</div>
+    <div class="sub">Empty bubble · stacked months · tap pin for card · Desk for CHS tools</div>
 
     <label>Map mode</label>
     <div class="chips" id="modes"></div>
-    <div id="chsRow" class="chips"><span class="chip toggle" id="chsDeskBtn" role="button" tabindex="0">CHS desk</span></div>
     <div class="note" id="dodNote" style="display:none"></div>
 
     <label>Search</label>
@@ -354,32 +465,10 @@
       <button class="secondary" id="sidebarBriefBtn" type="button">Daily brief</button>
       <button class="secondary" id="sidebarListBtn" type="button">Bids in view</button>
     </div>
-    <div class="actions" style="margin-top:8px" id="deskActions">
-      <button class="secondary" id="copyDeskBtn" type="button">Copy desk sheet</button>
+    <div class="actions" style="margin-top:8px">
+      <button class="secondary" id="sidebarDeskBtn" type="button">Desk</button>
     </div>
     <div class="stats" id="stats"></div>
-
-    
-
-    <div id="chsLocations" aria-label="CHS locations">
-      <h3>CHS locations</h3>
-      <div id="chsLocationsMeta"></div>
-      <div id="chsLocationsList"></div>
-    </div>
-
-    <div id="gapRadar" aria-label="CHS gap radar">
-      <div class="gap-head">
-        <h3>Gap radar</h3>
-        <button class="secondary" id="copyGapsBtn" type="button">Copy gaps</button>
-      </div>
-      <div id="gapRadarMeta"></div>
-      <div id="gapRadarList"></div>
-    </div>
-
-    <div id="sourcesBox">
-      <h3>Sources</h3>
-      <div id="sourcesList"></div>
-    </div>
 
     <div class="legend">
       <div><span class="swatch" style="background:#1a7f37"></span>Ethanol</div>
@@ -389,29 +478,15 @@
       <div><span class="swatch" style="background:#cf222e"></span>Feedyard</div>
       <div><span class="swatch" style="background:#6e7781"></span>Flour Mill</div>
     </div>
-
-    <div id="detail">
-      <h2 id="dtitle"></h2>
-      <div class="sub" id="dsub"></div>
-      <div class="detail-actions">
-        <button class="secondary tiny" id="copyBids">Copy bids</button>
-        <button class="secondary tiny" id="copyLocation">Copy location</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Entity</th><th>Comm</th><th>Deliv</th><th>Fut</th><th>Basis</th><th>Δ</th></tr></thead>
-          <tbody id="dbody"></tbody>
-        </table>
-      </div>
-      <div id="competitorsBox" style="display:none"></div>
-    </div>
   </aside>
   <div id="mapWrap">
-    <div id="desktopBar"><button type="button" id="desktopBriefBtn">Daily brief</button><button type="button" id="desktopListBtn">Bids in view</button></div>
+    <div id="desktopBar"><button type="button" id="desktopBriefBtn">Daily brief</button><button type="button" id="desktopListBtn">Bids in view</button><button type="button" id="desktopDeskBtn">Desk</button></div>
     <div id="mobileBar">
       <button id="toggleFilters">Filters</button>
       <button id="mobileBriefBtn">Daily brief</button>
       <button id="listViewBtn">Bids in view</button>
+      <button id="mobileDeskBtn" type="button">Desk</button>
+      <button id="selectModeBtn" type="button">Select</button>
     </div>
     <div id="map"></div>
     <div id="versionBadge">Basis Map v1.4-working · not locked</div>
@@ -449,6 +524,81 @@
     </div>
     <div id="listBody"></div>
   </div>
+</div>
+
+
+<div id="deskModal" aria-hidden="true">
+  <div id="deskSheet" role="dialog" aria-labelledby="deskTitle">
+    <div class="sheet-top">
+      <div class="sheet-handle"></div>
+      <h3 id="deskTitle">Desk</h3>
+      <div class="sheet-meta">CHS tools · gap radar · sources</div>
+      <div class="chips" id="chsRow" style="margin:8px 0 10px"><span class="chip toggle" id="chsDeskBtn" role="button" tabindex="0">CHS desk</span></div>
+      <div class="sheet-actions">
+        <button class="secondary" id="closeDeskBtn" type="button">Close</button>
+      </div>
+    </div>
+    <div id="deskBody">
+      <div class="note" id="deskOffNote">CHS desk is off. Turn it on above to use locations list, gap radar, and copy tools. Sources stay available below.</div>
+      <div id="deskTools">
+        <button class="secondary" id="copyDeskBtn" type="button">Copy desk sheet</button>
+        <div id="chsLocations" aria-label="CHS locations">
+          <h3>CHS locations</h3>
+          <div id="chsLocationsMeta"></div>
+          <div id="chsLocationsList"></div>
+        </div>
+        <div id="gapRadar" aria-label="CHS gap radar">
+          <div class="gap-head">
+            <h3>Gap radar</h3>
+            <button class="secondary" id="copyGapsBtn" type="button">Copy gaps</button>
+          </div>
+          <div id="gapRadarMeta"></div>
+          <div id="gapRadarList"></div>
+        </div>
+      </div>
+      <div id="sourcesBox">
+        <h3>Sources</h3>
+        <div id="sourcesList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pinModal" aria-hidden="true">
+  <div id="pinSheet" role="dialog" aria-labelledby="dtitle">
+    <div class="sheet-top">
+      <div class="sheet-handle"></div>
+      <h3 id="dtitle"></h3>
+      <div class="sheet-meta" id="dsub"></div>
+      <div class="sheet-actions">
+        <button class="secondary" id="copyBids" type="button">Copy bids</button>
+        <button class="secondary" id="copyLocation" type="button">Copy location</button>
+        <button class="secondary" id="pinAddSelBtn" type="button">Add to selection</button>
+        <button class="secondary" id="closePinBtn" type="button">Close</button>
+      </div>
+    </div>
+    <div id="pinBody">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Entity</th><th>Comm</th><th>Deliv</th><th>Fut</th><th>Basis</th><th>Δ</th></tr></thead>
+          <tbody id="dbody"></tbody>
+        </table>
+      </div>
+      <div id="competitorsBox" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div id="selTray" aria-hidden="true">
+  <div class="sel-top">
+    <h3 id="selTitle">Selection</h3>
+    <div class="sel-actions">
+      <button id="copySelBtn" type="button">Copy selection</button>
+      <button class="secondary" id="copySelTsvBtn" type="button">Copy TSV</button>
+      <button class="secondary" id="clearSelBtn" type="button">Clear</button>
+    </div>
+  </div>
+  <div id="selBody"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -507,6 +657,13 @@ let chsHighlight = false;
 let rendering = false;
 let renderTimer = null;
 let lastDetail = null;
+let selection = new Map(); // facKey -> facility
+let selectMode = false;
+function facKey(f){
+  return (f.ownership||'')+'|'+(f.location||'')+'|'+(f.state||'');
+}
+function isSelected(f){ return selection.has(facKey(f)); }
+
 const selComm = new Set(allCommodities);
 const selType = new Set(allTypes);
 const selDel = new Set(allDeliveries.filter(d => d==='Sept26' || d==='Oct26'));
@@ -546,23 +703,69 @@ function wireModeChips(){
     updateDodNote(); scheduleRender();
   });
 }
+function updateDeskChrome(){
+  const off = document.getElementById('deskOffNote');
+  const tools = document.getElementById('deskTools');
+  if(off) off.classList.toggle('show', !chsHighlight);
+  if(tools) tools.classList.toggle('show', !!chsHighlight);
+  const deskBtn = document.getElementById('copyDeskBtn');
+  if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+  const gapsBtn = document.getElementById('copyGapsBtn');
+  if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
+}
 function wireChsDesk(){
   const btn = document.getElementById('chsDeskBtn');
   if(!btn) return;
   btn.classList.toggle('on', chsHighlight);
-  const deskBtn = document.getElementById('copyDeskBtn');
-  if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+  updateDeskChrome();
   btn.onclick = () => {
     chsHighlight = !chsHighlight;
     btn.classList.toggle('on', chsHighlight);
-    if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
-    const gapsBtn = document.getElementById('copyGapsBtn');
-    if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
+    updateDeskChrome();
     renderGapRadar();
     scheduleRender();
   };
   btn.onkeydown = (e) => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); } };
   renderGapRadar();
+}
+function openDesk(){
+  updateDeskChrome();
+  renderGapRadar();
+  if(typeof renderSources === 'function') renderSources();
+  if(isMobile()){
+    sidebar.classList.remove('open');
+    const tf = document.getElementById('toggleFilters');
+    if(tf) tf.textContent = 'Filters';
+  }
+  const m = document.getElementById('deskModal');
+  if(!m) return;
+  m.classList.add('open');
+  m.setAttribute('aria-hidden','false');
+}
+function closeDesk(){
+  const m = document.getElementById('deskModal');
+  if(!m) return;
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden','true');
+}
+function openPinCard(){
+  const m = document.getElementById('pinModal');
+  if(!m) return;
+  m.classList.add('open');
+  m.setAttribute('aria-hidden','false');
+  syncPinAddBtn();
+}
+function closePinCard(){
+  const m = document.getElementById('pinModal');
+  if(!m) return;
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden','true');
+}
+function syncPinAddBtn(){
+  const btn = document.getElementById('pinAddSelBtn');
+  if(!btn || !lastDetail) return;
+  const on = isSelected(lastDetail.f);
+  btn.textContent = on ? 'Remove from selection' : 'Add to selection';
 }
 function isChsFacility(f){
   const own = (f.ownership||'').toLowerCase();
@@ -675,6 +878,7 @@ function renderChsLocations(){
     btn.className = 'chs-loc-row';
     btn.innerHTML = `<span class="chs-loc-name">${r.location} ${r.state}</span> <span class="chs-loc-meta">· ${r.nBids} bid${r.nBids===1?'':'s'} · ${r.commoditiesSummary}</span>`;
     btn.onclick = () => {
+      closeDesk();
       jumpToFacility(r.f);
       if(typeof closeSidebarAfterJump === 'function') closeSidebarAfterJump();
     };
@@ -823,6 +1027,7 @@ function renderGapRadar(){
     btn.className = 'gap-row';
     btn.innerHTML = `<span class="gap-loc">${r.chsFac.location} ${r.chsFac.state}</span> · ${r.commodity} ${r.delivery}<br>CHS ${fmtBasis(r.chs_basis)} vs ${r.competitor} ${fmtBasis(r.comp_basis)} (<span class="${ph.cls}">${ph.text}</span>)${r.sameTown?'':` · ~${r.miles.toFixed(0)}mi`}`;
     btn.onclick = () => {
+      closeDesk();
       jumpToFacility(r.chsFac);
       if(typeof closeSidebarAfterJump === 'function') closeSidebarAfterJump();
     };
@@ -1266,7 +1471,7 @@ function render(){
           halo = `<div class="bid-halo" style="width:20px;height:20px;background:#8c959f;opacity:.22"></div>`;
         }
       }
-      const mcls = 'bid-marker' + (chs && chsHighlight ? ' chs-ring' : '') + (faded ? ' faded' : '');
+      const mcls = 'bid-marker' + (chs && chsHighlight ? ' chs-ring' : '') + (faded ? ' faded' : '') + (isSelected(f) ? ' sel-ring' : '');
       const html = `<div class="${mcls}">${halo}<div class="bid-dot" style="background:${color}"></div>${under}</div>`;
       const lineCount = (show && detail!=='dot') ? ((detail==='full'?1:0) + lines.length) : 0;
       const h = 20 + lineCount * 14;
@@ -1277,7 +1482,18 @@ function render(){
         opacity: faded ? 0.32 : 1,
         zIndexOffset: (chs && chsHighlight) ? 400 : 0
       });
-      marker.on('click', () => showDetail(f, rows));
+      marker.on('click', (ev) => {
+        const oe = ev && ev.originalEvent;
+        const additive = !!(oe && (oe.ctrlKey || oe.metaKey)) || selectMode;
+        if(additive){
+          toggleSelection(f);
+          if(selectMode) showDetail(f, rows);
+          return;
+        }
+        // Normal click: clear multi-select, show pin card only (no Filters)
+        if(selection.size){ selection.clear(); renderSelectionTray(); scheduleRender(false); }
+        showDetail(f, rows);
+      });
       marker.bindTooltip(`${f.ownership} · ${f.location}, ${f.state}`, { direction:'top', offset:[0,-12] });
       marker.addTo(layer);
       if(show) labeled++;
@@ -1305,8 +1521,16 @@ function formatRows(f, rows){
 function showDetail(f, rows, opts){
   const options = opts || {};
   lastDetail = { f, rows: formatRows(f, rows) };
-  const box = document.getElementById('detail');
-  box.style.display = 'block';
+  // Never open Filters/sidebar for pin detail — pin card only
+  if(options.fromSearch){
+    closeSidebarAfterJump();
+  }
+  // Ensure Filters stay closed on mobile when opening a pin
+  if(isMobile()){
+    sidebar.classList.remove('open');
+    const tf = document.getElementById('toggleFilters');
+    if(tf) tf.textContent = 'Filters';
+  }
   document.getElementById('dtitle').textContent = `${f.ownership} · ${f.location}, ${f.state}`;
   const modeTag = mapMode==='dod' ? ' · day-over-day'
     : (mapMode==='heat_day' ? ' · heat · day' : (mapMode==='heat_week' ? ' · heat · week' : ''));
@@ -1324,19 +1548,7 @@ function showDetail(f, rows, opts){
     body.appendChild(tr);
   });
   renderCompetitorStrip(f, lastDetail.rows);
-  if(options.fromSearch){
-    closeSidebarAfterJump();
-    // On mobile keep detail reachable: reopen briefly? Spec: close filters so map visible.
-    // Detail stays in DOM; user can open Filters to see it. On desktop detail is in sidebar.
-    if(!isMobile()){
-      // desktop sidebar always visible — scroll detail into view
-      box.scrollIntoView({behavior:'smooth', block:'nearest'});
-    }
-  } else if(isMobile()){
-    sidebar.classList.add('open');
-    document.getElementById('toggleFilters').textContent='Close';
-    box.scrollIntoView({behavior:'smooth', block:'start'});
-  }
+  openPinCard();
 }
 
 async function copyText(text){
@@ -1420,8 +1632,13 @@ document.getElementById('reset').onclick = () => {
   wireCommChips(); wireTypeChips(); wireDelChips();
   [...document.getElementById('entity').options].forEach(o => o.selected=false);
   document.getElementById('q').value=''; document.getElementById('minb').value=''; document.getElementById('maxb').value='';
-  document.getElementById('detail').style.display='none';
   lastDetail = null;
+  closePinCard();
+  selection.clear();
+  renderSelectionTray();
+  selectMode = false;
+  const smb = document.getElementById('selectModeBtn');
+  if(smb) smb.classList.remove('on');
   mapMode='basis';
   chsHighlight=false;
   wireModeChips(); wireChsDesk();
@@ -1656,6 +1873,138 @@ document.getElementById('copyTsvBtn').onclick = () => {
   if(!lastListPayload.tsv){ toast('Nothing to copy'); return; }
   copyText(lastListPayload.tsv);
 };
+
+
+function toggleSelection(f){
+  if(!f) return;
+  const k = facKey(f);
+  if(selection.has(k)) selection.delete(k);
+  else selection.set(k, f);
+  renderSelectionTray();
+  scheduleRender(false);
+  syncPinAddBtn();
+}
+function removeSelectionKey(k){
+  selection.delete(k);
+  renderSelectionTray();
+  scheduleRender(false);
+  syncPinAddBtn();
+}
+function clearSelection(){
+  selection.clear();
+  renderSelectionTray();
+  scheduleRender(false);
+  syncPinAddBtn();
+}
+function selectionItems(){
+  const items = [];
+  selection.forEach((f) => {
+    const bids = filteredBids(f);
+    if(!bids.length){
+      items.push({ f, rows: [] });
+      return;
+    }
+    const { rows } = computeChanges(f, bids);
+    items.push({ f, rows: formatRows(f, rows) });
+  });
+  items.sort((a,b) => {
+    const ka = (a.f.state+' '+a.f.location+' '+a.f.ownership).toLowerCase();
+    const kb = (b.f.state+' '+b.f.location+' '+b.f.ownership).toLowerCase();
+    return ka.localeCompare(kb);
+  });
+  return items;
+}
+function renderSelectionTray(){
+  const tray = document.getElementById('selTray');
+  const body = document.getElementById('selBody');
+  const title = document.getElementById('selTitle');
+  if(!tray || !body) return;
+  if(!selection.size){
+    tray.classList.remove('open');
+    tray.setAttribute('aria-hidden','true');
+    body.innerHTML = '';
+    return;
+  }
+  const items = selectionItems();
+  title.textContent = `Selection · ${items.length}`;
+  body.innerHTML = '';
+  items.forEach(({ f, rows }) => {
+    const k = facKey(f);
+    const div = document.createElement('div');
+    div.className = 'sel-row';
+    const bidLines = rows.length
+      ? rows.map(b => {
+          const basis = (b.basis>=0?'+':'') + Number(b.basis).toFixed(2);
+          const d = (b.change===null||b.change===undefined) ? '' : ` Δ${(b.change>=0?'+':'')+Number(b.change).toFixed(2)}`;
+          return `${b.commodity} ${b.delivery} ${basis}${d}`;
+        }).join('\\n')
+      : 'No bids under current filters';
+    div.innerHTML = `<div class="sel-main"><strong>${f.ownership} · ${f.location}, ${f.state}</strong><div class="sel-bids"></div></div>`;
+    div.querySelector('.sel-bids').textContent = bidLines;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'secondary sel-x';
+    x.textContent = '✕';
+    x.onclick = () => removeSelectionKey(k);
+    div.appendChild(x);
+    body.appendChild(div);
+  });
+  tray.classList.add('open');
+  tray.setAttribute('aria-hidden','false');
+}
+function buildSelectionPayload(){
+  const items = selectionItems();
+  return buildListPayload(items);
+}
+
+document.getElementById('copySelBtn').onclick = () => {
+  if(!selection.size){ toast('Nothing selected'); return; }
+  const p = buildSelectionPayload();
+  copyText(p.text || '');
+};
+document.getElementById('copySelTsvBtn').onclick = () => {
+  if(!selection.size){ toast('Nothing selected'); return; }
+  const p = buildSelectionPayload();
+  copyText(p.tsv || '');
+};
+document.getElementById('clearSelBtn').onclick = () => clearSelection();
+
+['desktopDeskBtn','mobileDeskBtn','sidebarDeskBtn'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.onclick = () => openDesk();
+});
+document.getElementById('closeDeskBtn').onclick = closeDesk;
+document.getElementById('deskModal').addEventListener('click', (e) => {
+  if(e.target.id === 'deskModal') closeDesk();
+});
+
+document.getElementById('closePinBtn').onclick = closePinCard;
+document.getElementById('pinModal').addEventListener('click', (e) => {
+  if(e.target.id === 'pinModal') closePinCard();
+});
+document.getElementById('pinAddSelBtn').onclick = () => {
+  if(!lastDetail){ toast('Tap a pin first'); return; }
+  toggleSelection(lastDetail.f);
+};
+
+const selectModeBtn = document.getElementById('selectModeBtn');
+if(selectModeBtn){
+  selectModeBtn.onclick = () => {
+    selectMode = !selectMode;
+    selectModeBtn.classList.toggle('on', selectMode);
+    toast(selectMode ? 'Select mode on — tap pins to multi-select' : 'Select mode off');
+  };
+}
+
+document.addEventListener('keydown', (e) => {
+  if(e.key !== 'Escape') return;
+  if(document.getElementById('pinModal')?.classList.contains('open')){ closePinCard(); return; }
+  if(document.getElementById('deskModal')?.classList.contains('open')){ closeDesk(); return; }
+  if(document.getElementById('listModal')?.classList.contains('open')){
+    document.getElementById('closeListBtn')?.click(); return;
+  }
+  if(document.getElementById('briefModal')?.classList.contains('open')){ closeBrief(); return; }
+});
 
 window.addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz=setTimeout(()=>{ map.invalidateSize(); scheduleRender(false); }, 150); });
 updateDodNote();
