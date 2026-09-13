@@ -1050,29 +1050,45 @@ function renderGapRadar(){
 }
 
 /** Competitors under pin detail for CHS bids. */
+function bidsForGapCompare(f){
+  // Commodity + delivery + latest date only — never Search / entity / basis-range filters.
+  const latest = allDates[allDates.length-1];
+  return (f.bids || []).filter(b => {
+    if(latest && b.date !== latest) return false;
+    if(selComm.size && !selComm.has(b.commodity)) return false;
+    if(selDel.size && !selDel.has(b.delivery)) return false;
+    return true;
+  });
+}
 function facilityGapsForPin(f, rows){
   // Gaps for the selected facility vs nearby posts (same commodity×delivery).
   // CHS pin → vs non-CHS competitors. Non-CHS pin → vs nearby CHS.
+  // Uses bidsForGapCompare so Search text cannot blank competitor matches.
   const focusChs = isChsFacility(f) || (rows||[]).some(isChsBid);
-  const focusBids = (() => {
+  let focusBids = (() => {
     if(focusChs){
       const chsBids = (rows||[]).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
       return chsBids.length ? chsBids : (rows||[]);
     }
     return rows||[];
   })();
+  // If rows were narrowed oddly, fall back to facility bids under commodity/delivery chips
+  if(!focusBids.length){
+    focusBids = bidsForGapCompare(f).filter(b => !focusChs || isChsBid(b) || isChsEntityName(f.ownership));
+  }
   if(!focusBids.length) return [];
 
+  const selfKey = [f.ownership, f.location, f.state, f.facility_type].join('|');
   const gaps = [];
   focusBids.forEach(fb => {
     FACILITIES.forEach(g => {
-      if(g === f) return;
+      const gKey = [g.ownership, g.location, g.state, g.facility_type].join('|');
+      if(gKey === selfKey) return;
       if(selType.size && !selType.has(g.facility_type)) return;
       const gIsChs = isChsFacility(g);
-      // CHS focus wants non-CHS comps; competitor focus wants CHS comps
       if(focusChs && gIsChs) return;
       if(!focusChs && !gIsChs) return;
-      const obids = filteredBids(g, {ignoreSearch:true}).filter(b => {
+      const obids = bidsForGapCompare(g).filter(b => {
         if(b.commodity !== fb.commodity || b.delivery !== fb.delivery) return false;
         if(focusChs) return !isChsBid(b);
         return isChsBid(b) || isChsEntityName(g.ownership);
@@ -1080,7 +1096,7 @@ function facilityGapsForPin(f, rows){
       if(!obids.length) return;
       const sameTown = g.location===f.location && g.state===f.state;
       const miles = (f.lat!=null && g.lat!=null) ? haversineMiles(f.lat,f.lon,g.lat,g.lon) : 9999;
-      if(!sameTown && miles > 25.01) return;
+      if(!sameTown && !(miles <= 25.01)) return;
       obids.forEach(ob => {
         const chsBasis = focusChs ? Number(fb.basis) : Number(ob.basis);
         const compBasis = focusChs ? Number(ob.basis) : Number(fb.basis);
@@ -1098,7 +1114,6 @@ function facilityGapsForPin(f, rows){
           gap,
           miles: sameTown ? 0 : miles,
           sameTown,
-          // radar-compatible fields for formatting
           chsFac: focusChs ? f : g,
           compFac: focusChs ? g : f,
           chs_basis: chsBasis,
@@ -1109,7 +1124,6 @@ function facilityGapsForPin(f, rows){
     });
   });
 
-  // Dedupe
   const seen = new Set();
   const out = [];
   gaps.forEach(r => {
@@ -1752,6 +1766,10 @@ function jumpToFacility(f, opts){
   // Close search UI first so map is visible (mobile + desktop)
   if(options.fromSearch){
     closeSidebarAfterJump();
+    // Clear Search so it cannot blank Gaps / hide nearby pins (e.g. Alma also matches Talmage)
+    const q = document.getElementById('q');
+    if(q){ q.value = ''; }
+    hideSearchResults();
   } else {
     hideSearchResults();
   }
