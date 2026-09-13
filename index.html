@@ -235,6 +235,40 @@
   #qResults .q-meta { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
   #chsRow { margin-top: 8px; }
 
+  /* CHS desk pack: gap radar + competitor strip */
+  #gapRadar {
+    display: none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;
+  }
+  #gapRadar.open { display: block; }
+  #gapRadar h3 {
+    margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); font-weight: 600;
+  }
+  #gapRadarMeta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  #gapRadarList { display: grid; gap: 6px; max-height: 280px; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .gap-row {
+    display: block; width: 100%; text-align: left; background: #f6f8fa; color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 12px;
+    line-height: 1.35; cursor: pointer; flex: none;
+  }
+  .gap-row:hover, .gap-row:focus { background: #ddf4ff; border-color: #b6e3ff; outline: none; }
+  .gap-row .gap-loc { font-weight: 600; }
+  .gap-row .gap-amt { color: var(--muted); }
+  .gap-row .gap-over { color: #1a7f37; font-weight: 600; }
+  .gap-row .gap-under { color: #cf222e; font-weight: 600; }
+  #competitorsBox { margin-top: 12px; }
+  #competitorsBox h3 {
+    margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); font-weight: 600;
+  }
+  #competitorsBox .comp-block { margin-bottom: 10px; font-size: 12px; }
+  #competitorsBox .comp-head { font-weight: 600; margin-bottom: 4px; }
+  #competitorsBox .comp-line { color: var(--text); padding: 2px 0; line-height: 1.35; }
+  #competitorsBox .comp-empty { color: var(--muted); font-size: 12px; }
+  #copyDeskBtn { display: none; }
+  #copyDeskBtn.show { display: inline-flex; }
+
+
 
   #sourcesBox { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
   #sourcesBox h3 { margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:600; }
@@ -296,9 +330,19 @@
       <button class="secondary" id="sidebarBriefBtn" type="button">Daily brief</button>
       <button class="secondary" id="sidebarListBtn" type="button">Bids in view</button>
     </div>
+    <div class="actions" style="margin-top:8px" id="deskActions">
+      <button class="secondary" id="copyDeskBtn" type="button">Copy desk sheet</button>
+    </div>
     <div class="stats" id="stats"></div>
 
     
+
+    <div id="gapRadar" aria-label="CHS gap radar">
+      <h3>Gap radar</h3>
+      <div id="gapRadarMeta"></div>
+      <div id="gapRadarList"></div>
+    </div>
+
     <div id="sourcesBox">
       <h3>Sources</h3>
       <div id="sourcesList"></div>
@@ -326,6 +370,7 @@
           <tbody id="dbody"></tbody>
         </table>
       </div>
+      <div id="competitorsBox" style="display:none"></div>
     </div>
   </aside>
   <div id="mapWrap">
@@ -472,18 +517,303 @@ function wireChsDesk(){
   const btn = document.getElementById('chsDeskBtn');
   if(!btn) return;
   btn.classList.toggle('on', chsHighlight);
+  const deskBtn = document.getElementById('copyDeskBtn');
+  if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
   btn.onclick = () => {
     chsHighlight = !chsHighlight;
     btn.classList.toggle('on', chsHighlight);
+    if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+    renderGapRadar();
     scheduleRender();
   };
   btn.onkeydown = (e) => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); } };
+  renderGapRadar();
 }
 function isChsFacility(f){
   const own = (f.ownership||'').toLowerCase();
   if(own.includes('chs')) return true;
   if((f.entities||[]).some(e => String(e).toLowerCase().includes('chs'))) return true;
   return (f.bids||[]).some(b => String(b.entity||'').toLowerCase().includes('chs') || String(b.ownership||'').toLowerCase().includes('chs'));
+}
+
+function isChsEntityName(s){
+  return /chs/i.test(String(s||''));
+}
+function isChsBid(b){
+  return isChsEntityName(b && b.entity) || isChsEntityName(b && b.ownership);
+}
+function fmtBasis(n){
+  const x = Number(n);
+  if(!Number.isFinite(x)) return '—';
+  return (x>=0?'+':'') + x.toFixed(2);
+}
+function haversineMiles(lat1, lon1, lat2, lon2){
+  const R = 3958.8;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function closeSidebarAfterJump(){
+  hideSearchResults();
+  const q = document.getElementById('q');
+  if(q) q.blur();
+  if(isMobile()){
+    sidebar.classList.remove('open');
+    const btn = document.getElementById('toggleFilters');
+    if(btn) btn.textContent = 'Filters';
+  }
+}
+function gapPhrase(gap){
+  const abs = Math.abs(gap);
+  if(gap > 0.0005) return { cls:'gap-over', text:`CHS over by ${abs.toFixed(2)}` };
+  if(gap < -0.0005) return { cls:'gap-under', text:`CHS under by ${abs.toFixed(2)}` };
+  return { cls:'gap-amt', text:`CHS even (0.00)` };
+}
+function filterLabelSummary(){
+  const comm = selComm.size === allCommodities.length ? 'all commodities' : [...selComm].sort().join(', ');
+  const del = [...selDel].sort((a,b)=>{
+    const ka=deliveryKey(a), kb=deliveryKey(b); return ka[0]-kb[0]||ka[1]-kb[1];
+  }).join(', ') || '—';
+  return { comm, del, date: allDates[allDates.length-1] || '' };
+}
+
+/** Build CHS vs competitor gap rows for current filters. */
+function computeGapRadar(limit){
+  const lim = limit || 25;
+  const latest = allDates[allDates.length-1];
+  const sameTown = [];
+  const nearby = [];
+
+  // Index non-CHS filtered bids by town key and keep facility refs for distance
+  const nonChs = [];
+  FACILITIES.forEach(f => {
+    if(selType.size && !selType.has(f.facility_type)) return;
+    if(isChsFacility(f)) return;
+    const bids = filteredBids(f).filter(b => !isChsBid(b));
+    if(!bids.length) return;
+    nonChs.push({ f, bids });
+  });
+
+  FACILITIES.forEach(f => {
+    if(selType.size && !selType.has(f.facility_type)) return;
+    if(!isChsFacility(f)) return;
+    const use = filteredBids(f).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+    const chsList = use.length ? use : filteredBids(f);
+    chsList.forEach(cb => {
+      // same town
+      nonChs.forEach(({ f:g, bids }) => {
+        if(g.location !== f.location || g.state !== f.state) return;
+        bids.forEach(ob => {
+          if(ob.commodity !== cb.commodity || ob.delivery !== cb.delivery) return;
+          const gap = Number(cb.basis) - Number(ob.basis);
+          sameTown.push({
+            chsFac: f, compFac: g, commodity: cb.commodity, delivery: cb.delivery,
+            chs_basis: Number(cb.basis), comp_basis: Number(ob.basis),
+            competitor: ob.entity, gap, miles: 0, sameTown: true
+          });
+        });
+      });
+      // nearby candidates (filled later if thin)
+      nonChs.forEach(({ f:g, bids }) => {
+        if(g.location === f.location && g.state === f.state) return;
+        if(f.lat==null || g.lat==null) return;
+        const miles = haversineMiles(f.lat, f.lon, g.lat, g.lon);
+        if(miles > 25.01) return;
+        bids.forEach(ob => {
+          if(ob.commodity !== cb.commodity || ob.delivery !== cb.delivery) return;
+          const gap = Number(cb.basis) - Number(ob.basis);
+          nearby.push({
+            chsFac: f, compFac: g, commodity: cb.commodity, delivery: cb.delivery,
+            chs_basis: Number(cb.basis), comp_basis: Number(ob.basis),
+            competitor: ob.entity, gap, miles, sameTown: false
+          });
+        });
+      });
+    });
+  });
+
+  // Deduplicate by chs loc+comm+del+competitor entity+comp loc
+  function dedupe(arr){
+    const seen = new Set();
+    const out = [];
+    arr.forEach(r => {
+      const k = [r.chsFac.location, r.chsFac.state, r.commodity, r.delivery, r.competitor, r.compFac.location, r.compFac.state].join('|');
+      if(seen.has(k)) return;
+      seen.add(k);
+      out.push(r);
+    });
+    return out;
+  }
+  let rows = dedupe(sameTown);
+  rows.sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+  if(rows.length < 12){
+    const extra = dedupe(nearby).sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+    const seen = new Set(rows.map(r => [r.chsFac.location,r.chsFac.state,r.commodity,r.delivery,r.competitor,r.compFac.location].join('|')));
+    for(const r of extra){
+      const k = [r.chsFac.location,r.chsFac.state,r.commodity,r.delivery,r.competitor,r.compFac.location].join('|');
+      if(seen.has(k)) continue;
+      rows.push(r); seen.add(k);
+      if(rows.length >= lim) break;
+    }
+  }
+  rows.sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+  return rows.slice(0, lim);
+}
+
+function formatGapLine(r){
+  const loc = `${r.chsFac.location} ${r.chsFac.state}`;
+  const ph = gapPhrase(r.gap);
+  const near = r.sameTown ? '' : ` · ~${r.miles.toFixed(0)}mi`;
+  return {
+    text: `${loc} · ${r.commodity} ${r.delivery} · CHS ${fmtBasis(r.chs_basis)} vs ${r.competitor} ${fmtBasis(r.comp_basis)} (${ph.text})${near}`,
+    ph
+  };
+}
+
+function renderGapRadar(){
+  const box = document.getElementById('gapRadar');
+  const list = document.getElementById('gapRadarList');
+  const meta = document.getElementById('gapRadarMeta');
+  const deskBtn = document.getElementById('copyDeskBtn');
+  if(!box || !list) return;
+  if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+  if(!chsHighlight){
+    box.classList.remove('open');
+    list.innerHTML = '';
+    return;
+  }
+  box.classList.add('open');
+  const rows = computeGapRadar(25);
+  window.__lastGaps = rows;
+  const sum = filterLabelSummary();
+  meta.textContent = rows.length
+    ? `Top ${rows.length} |gap| · ${sum.del} · ${sum.date}`
+    : `No CHS vs competitor gaps for ${sum.del}`;
+  list.innerHTML = '';
+  if(!rows.length){
+    list.innerHTML = '<div class="note">No same-town or ≤25mi competitor posts match current filters.</div>';
+    return;
+  }
+  rows.forEach((r, idx) => {
+    const { text, ph } = formatGapLine(r);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gap-row';
+    btn.innerHTML = `<span class="gap-loc">${r.chsFac.location} ${r.chsFac.state}</span> · ${r.commodity} ${r.delivery}<br>CHS ${fmtBasis(r.chs_basis)} vs ${r.competitor} ${fmtBasis(r.comp_basis)} (<span class="${ph.cls}">${ph.text}</span>)${r.sameTown?'':` · ~${r.miles.toFixed(0)}mi`}`;
+    btn.onclick = () => {
+      jumpToFacility(r.chsFac);
+    };
+    list.appendChild(btn);
+  });
+}
+
+/** Competitors under pin detail for CHS bids. */
+function buildCompetitorStrip(f, rows){
+  const hasChs = isChsFacility(f) || (rows||[]).some(isChsBid);
+  if(!hasChs) return null;
+  const chsBids = (rows||[]).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+  const use = chsBids.length ? chsBids : (isChsFacility(f) ? rows : []);
+  if(!use || !use.length) return null;
+
+  const blocks = [];
+  use.forEach(cb => {
+    // gather competitors
+    const same = [];
+    const near = [];
+    FACILITIES.forEach(g => {
+      if(g === f) return;
+      if(isChsFacility(g)) return;
+      if(selType.size && !selType.has(g.facility_type)) return;
+      const obids = filteredBids(g).filter(b => !isChsBid(b) && b.commodity===cb.commodity && b.delivery===cb.delivery);
+      if(!obids.length) return;
+      const sameTown = g.location===f.location && g.state===f.state;
+      const miles = (f.lat!=null && g.lat!=null) ? haversineMiles(f.lat,f.lon,g.lat,g.lon) : 9999;
+      obids.forEach(ob => {
+        const item = { g, ob, miles, gap: Number(cb.basis)-Number(ob.basis), sameTown };
+        if(sameTown) same.push(item);
+        else if(miles <= 25.01) near.push(item);
+      });
+    });
+    let picks = same;
+    if(!picks.length){
+      near.sort((a,b) => a.miles - b.miles || Math.abs(b.gap)-Math.abs(a.gap));
+      // nearest up to ~3 competitors (unique facilities)
+      const seen = new Set();
+      picks = [];
+      for(const it of near){
+        const k = it.g.ownership+'|'+it.g.location;
+        if(seen.has(k)) continue;
+        seen.add(k);
+        picks.push(it);
+        if(picks.length >= 3) break;
+      }
+    } else {
+      picks.sort((a,b) => Math.abs(b.gap)-Math.abs(a.gap));
+    }
+    blocks.push({ cb, picks });
+  });
+  return blocks;
+}
+
+function renderCompetitorStrip(f, rows){
+  const box = document.getElementById('competitorsBox');
+  if(!box) return;
+  const blocks = buildCompetitorStrip(f, rows);
+  if(!blocks){
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  box.style.display = 'block';
+  let html = '<h3>Competitors</h3>';
+  let any = false;
+  blocks.forEach(({ cb, picks }) => {
+    html += `<div class="comp-block"><div class="comp-head">${cb.commodity} ${cb.delivery} · CHS ${fmtBasis(cb.basis)}</div>`;
+    if(!picks.length){
+      html += `<div class="comp-empty">No same-town or ≤25mi competitor posts</div>`;
+    } else {
+      any = true;
+      picks.forEach(it => {
+        const ph = gapPhrase(it.gap);
+        const where = it.sameTown
+          ? `${it.ob.entity} · ${it.g.location}`
+          : `${it.ob.entity} · ${it.g.location} (~${it.miles.toFixed(0)}mi)`;
+        html += `<div class="comp-line">${where}: ${fmtBasis(it.ob.basis)} <span class="${ph.cls}">(${ph.text})</span></div>`;
+      });
+    }
+    html += '</div>';
+  });
+  box.innerHTML = html;
+}
+
+function buildDeskSheetText(){
+  const sum = filterLabelSummary();
+  const lines = [];
+  lines.push(`CHS desk sheet — ${sum.date}`);
+  lines.push(`Filters: ${sum.comm} · ${sum.del}`);
+  lines.push('');
+  lines.push('CHS bids');
+  let chsN = 0;
+  FACILITIES.forEach(f => {
+    if(selType.size && !selType.has(f.facility_type)) return;
+    if(!isChsFacility(f)) return;
+    const bids = filteredBids(f).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+    const list = bids.length ? bids : (isChsFacility(f) ? filteredBids(f) : []);
+    list.forEach(b => {
+      chsN++;
+      lines.push(`${f.location}, ${f.state} · ${b.commodity} ${b.delivery} · ${fmtBasis(b.basis)} (${b.entity})`);
+    });
+  });
+  if(!chsN) lines.push('(none for current filters)');
+  lines.push('');
+  lines.push('Gap radar');
+  const gaps = (chsHighlight && window.__lastGaps && window.__lastGaps.length)
+    ? window.__lastGaps
+    : computeGapRadar(25);
+  if(!gaps.length) lines.push('(no gaps)');
+  else gaps.forEach(r => lines.push(formatGapLine(r).text));
+  return lines.join('\n');
 }
 function deltaField(){
   if(mapMode==='heat_week') return 'week_change';
@@ -828,6 +1158,7 @@ function render(){
       map.fitBounds(bounds, { padding:[30,30], maxZoom:8 });
     }
     renderTowns();
+    renderGapRadar();
   } finally {
     rendering = false;
   }
@@ -840,7 +1171,8 @@ function formatRows(f, rows){
   });
 }
 
-function showDetail(f, rows){
+function showDetail(f, rows, opts){
+  const options = opts || {};
   lastDetail = { f, rows: formatRows(f, rows) };
   const box = document.getElementById('detail');
   box.style.display = 'block';
@@ -860,7 +1192,20 @@ function showDetail(f, rows){
     tr.innerHTML = `<td>${b.entity}</td><td class="${commClass(b.commodity)}">${b.commodity}</td><td>${b.delivery}</td><td>${b.futures_month||''}</td><td class="${cls}">${Number(b.basis).toFixed(2)}</td><td class="${dcls}">${dtxt}</td>`;
     body.appendChild(tr);
   });
-  if(isMobile()){ sidebar.classList.add('open'); document.getElementById('toggleFilters').textContent='Close'; box.scrollIntoView({behavior:'smooth', block:'start'}); }
+  renderCompetitorStrip(f, lastDetail.rows);
+  if(options.fromSearch){
+    closeSidebarAfterJump();
+    // On mobile keep detail reachable: reopen briefly? Spec: close filters so map visible.
+    // Detail stays in DOM; user can open Filters to see it. On desktop detail is in sidebar.
+    if(!isMobile()){
+      // desktop sidebar always visible — scroll detail into view
+      box.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+  } else if(isMobile()){
+    sidebar.classList.add('open');
+    document.getElementById('toggleFilters').textContent='Close';
+    box.scrollIntoView({behavior:'smooth', block:'start'});
+  }
 }
 
 async function copyText(text){
@@ -889,6 +1234,11 @@ document.getElementById('copyLocation').onclick = () => {
   if(!lastDetail){ toast('Tap a pin first'); return; }
   const f = lastDetail.f;
   copyText(`${f.ownership} · ${f.location}, ${f.state}`);
+};
+
+document.getElementById('copyDeskBtn').onclick = () => {
+  const text = buildDeskSheetText();
+  copyText(text);
 };
 
 map.on('zoomend', () => scheduleRender(false));
@@ -931,13 +1281,19 @@ function searchFacilities(q){
   }
   return hits;
 }
-function jumpToFacility(f){
+function jumpToFacility(f, opts){
   if(!f || f.lat==null || f.lon==null) return;
+  const options = opts || {};
+  // Close search UI first so map is visible (mobile + desktop)
+  if(options.fromSearch){
+    closeSidebarAfterJump();
+  } else {
+    hideSearchResults();
+  }
   map.setView([f.lat, f.lon], Math.max(map.getZoom(), 10.5), { animate:true });
   const bids = filteredBids(f);
   const { rows } = computeChanges(f, bids.length ? bids : (f.bids||[]).filter(b => b.date === allDates[allDates.length-1]));
-  showDetail(f, rows);
-  if(isMobile()){ sidebar.classList.add('open'); document.getElementById('toggleFilters').textContent='Close'; }
+  showDetail(f, rows, options);
 }
 function renderSearchResults(hits){
   const box = document.getElementById('qResults');
@@ -949,7 +1305,7 @@ function renderSearchResults(hits){
     btn.type = 'button';
     btn.setAttribute('role','option');
     btn.innerHTML = `<strong>${f.ownership} · ${f.location}, ${f.state||''}</strong><span class="q-meta">${f.facility_type}</span>`;
-    btn.onclick = () => { jumpToFacility(f); /* keep list if multi; close on click of one */ hideSearchResults(); };
+    btn.onclick = () => { jumpToFacility(f, { fromSearch:true }); };
     box.appendChild(btn);
   });
   box.classList.add('open');
@@ -969,14 +1325,11 @@ qInput.addEventListener('keydown', e => {
   if(e.key === 'Enter'){
     e.preventDefault();
     const hits = searchFacilities(qInput.value);
-    if(hits.length === 1){
-      jumpToFacility(hits[0]);
-      hideSearchResults();
-    } else if(hits.length > 1){
-      jumpToFacility(hits[0]);
-      renderSearchResults(hits); // keep list
+    if(hits.length >= 1){
+      jumpToFacility(hits[0], { fromSearch:true });
     } else {
       hideSearchResults();
+      if(qInput) qInput.blur();
     }
     scheduleRender(true);
   }
