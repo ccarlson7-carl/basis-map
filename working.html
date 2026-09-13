@@ -1338,7 +1338,7 @@ function showDetail(f, rows, opts){
   }
 }
 
-async async function copyText(text){
+async function copyText(text){
   try {
     await navigator.clipboard.writeText(text);
     toast('Copied');
