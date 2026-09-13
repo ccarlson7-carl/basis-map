@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
-<title>Cash Basis Map · v1.3</title>
+<title>Cash Basis Map · v1.4-working</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -202,6 +202,86 @@
     #briefSheet { border-radius:16px; max-height:min(80vh, 780px); }
   }
 
+
+  /* Heat halo under pin */
+  .bid-marker { position: relative; }
+  .bid-halo {
+    position: absolute; left: 50%; top: 8px; transform: translate(-50%, -50%);
+    border-radius: 50%; pointer-events: none; opacity: 0.38; z-index: 0;
+  }
+  .bid-marker .bid-dot { position: relative; z-index: 1; }
+  .bid-marker.chs-ring .bid-dot {
+    box-shadow: 0 0 0 3px #0550ae, 0 1px 3px rgba(0,0,0,.28);
+    border-width: 3px; border-color: #fff;
+  }
+  .bid-marker.faded { opacity: 0.3; }
+  .chip.toggle.on { background: #0550ae; border-color: #0550ae; color: #fff; }
+  .chip.toggle { background: #fff; }
+  .search-wrap { position: relative; }
+  #qResults {
+    display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+    z-index: 1300; background: #fff; border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    max-height: 260px; overflow: auto; -webkit-overflow-scrolling: touch;
+  }
+  #qResults.open { display: block; }
+  #qResults button {
+    display: block; width: 100%; text-align: left; background: #fff; color: var(--text);
+    border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+    padding: 10px 12px; font-size: 13px; cursor: pointer; flex: none;
+  }
+  #qResults button:last-child { border-bottom: 0; }
+  #qResults button:hover, #qResults button:focus { background: #f6f8fa; outline: none; }
+  #qResults .q-meta { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  #chsRow { margin-top: 8px; }
+
+  /* CHS desk pack: gap radar + competitor strip */
+  #gapRadar {
+    display: none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;
+  }
+  #gapRadar.open { display: block; }
+  #gapRadar h3 {
+    margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); font-weight: 600;
+  }
+  #gapRadarMeta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  #gapRadarList { display: grid; gap: 6px; max-height: 280px; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .gap-row {
+    display: block; width: 100%; text-align: left; background: #f6f8fa; color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 12px;
+    line-height: 1.35; cursor: pointer; flex: none;
+  }
+  .gap-row:hover, .gap-row:focus { background: #ddf4ff; border-color: #b6e3ff; outline: none; }
+  .gap-row .gap-loc { font-weight: 600; }
+  .gap-row .gap-amt { color: var(--muted); }
+  .gap-row .gap-over { color: #1a7f37; font-weight: 600; }
+  .gap-row .gap-under { color: #cf222e; font-weight: 600; }
+  #competitorsBox { margin-top: 12px; }
+  #competitorsBox h3 {
+    margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); font-weight: 600;
+  }
+  #competitorsBox .comp-block { margin-bottom: 10px; font-size: 12px; }
+  #competitorsBox .comp-head { font-weight: 600; margin-bottom: 4px; }
+  #competitorsBox .comp-line { color: var(--text); padding: 2px 0; line-height: 1.35; }
+  #competitorsBox .comp-empty { color: var(--muted); font-size: 12px; }
+  #copyDeskBtn { display: none; }
+  #copyDeskBtn.show { display: inline-flex; }
+  #copyGapsBtn { display: none; font-size: 12px; padding: 4px 8px; margin-left: 6px; }
+  #copyGapsBtn.show { display: inline-flex; }
+  #gapRadar h3 { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #gapRadar .gap-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  #gapRadar .gap-head h3 { margin:0; }
+
+
+
+  #sourcesBox { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+  #sourcesBox h3 { margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:600; }
+  #sourcesList { max-height:160px; overflow:auto; -webkit-overflow-scrolling:touch; font-size:12px; line-height:1.35; }
+  #sourcesList a { display:block; color:#0969da; text-decoration:none; padding:3px 0; }
+  #sourcesList a:hover { text-decoration:underline; }
+  #sourcesList .src-meta { color:var(--muted); font-size:11px; margin-left:4px; }
+
 </style>
 </head>
 <body>
@@ -209,15 +289,19 @@
   <aside id="sidebar">
     <div id="sheetHandle"></div>
     <h1>Cash Basis Map</h1>
-    <div class="ver"><span class="pill">v1.3</span><span>locked</span></div>
+    <div class="ver"><span class="pill">v1.4-working</span><span>experimental · v1.3 locked</span></div>
     <div class="sub">Empty bubble · stacked months under pin · tap for copy panel</div>
 
     <label>Map mode</label>
     <div class="chips" id="modes"></div>
+    <div id="chsRow" class="chips"><span class="chip toggle" id="chsDeskBtn" role="button" tabindex="0">CHS desk</span></div>
     <div class="note" id="dodNote" style="display:none"></div>
 
     <label>Search</label>
-    <input type="search" id="q" placeholder="Location, ownership, entity…" enterkeyhint="search"/>
+    <div class="search-wrap">
+      <input type="search" id="q" placeholder="Location, ownership, entity…" enterkeyhint="search" autocomplete="off"/>
+      <div id="qResults" role="listbox" aria-label="Search results"></div>
+    </div>
 
     <label>Commodity</label>
     <div class="chips" id="commodities"></div>
@@ -251,7 +335,23 @@
       <button class="secondary" id="sidebarBriefBtn" type="button">Daily brief</button>
       <button class="secondary" id="sidebarListBtn" type="button">Bids in view</button>
     </div>
+    <div class="actions" style="margin-top:8px" id="deskActions">
+      <button class="secondary" id="copyDeskBtn" type="button">Copy desk sheet</button>
+    </div>
     <div class="stats" id="stats"></div>
+
+    
+
+    <div id="gapRadar" aria-label="CHS gap radar">
+      <h3>Gap radar</h3>
+      <div id="gapRadarMeta"></div>
+      <div id="gapRadarList"></div>
+    </div>
+
+    <div id="sourcesBox">
+      <h3>Sources</h3>
+      <div id="sourcesList"></div>
+    </div>
 
     <div class="legend">
       <div><span class="swatch" style="background:#1a7f37"></span>Ethanol</div>
@@ -275,6 +375,7 @@
           <tbody id="dbody"></tbody>
         </table>
       </div>
+      <div id="competitorsBox" style="display:none"></div>
     </div>
   </aside>
   <div id="mapWrap">
@@ -285,7 +386,7 @@
       <button id="listViewBtn">Bids in view</button>
     </div>
     <div id="map"></div>
-    <div id="versionBadge">Basis Map v1.3 · locked</div>
+    <div id="versionBadge">Basis Map v1.4-working · not locked</div>
   </div>
 </div>
 
@@ -330,7 +431,7 @@ const COUNTIES = {"type":"FeatureCollection","features":[{"type":"Feature","geom
 const TOWNS = [{"name":"Omaha","state":"NE","lat":41.168343,"lon":-96.209633},{"name":"Lincoln","state":"NE","lat":40.8169,"lon":-96.7103},{"name":"Grand Island","state":"NE","lat":40.921858,"lon":-98.341062},{"name":"Kearney","state":"NE","lat":40.7086,"lon":-99.1203},{"name":"North Platte","state":"NE","lat":41.132595,"lon":-100.774631},{"name":"Hastings","state":"NE","lat":40.587654,"lon":-98.391146},{"name":"Norfolk","state":"NE","lat":42.032914,"lon":-97.422898},{"name":"Scottsbluff","state":"NE","lat":41.871975,"lon":-103.661914},{"name":"Columbus","state":"NE","lat":41.437225,"lon":-97.356469},{"name":"Lexington","state":"NE","lat":40.785002,"lon":-99.751515},{"name":"Holdrege","state":"NE","lat":40.447527,"lon":-99.367233},{"name":"York","state":"NE","lat":40.866678,"lon":-97.582482},{"name":"Beatrice","state":"NE","lat":40.270509,"lon":-96.743494},{"name":"Wichita","state":"KS","lat":37.6898,"lon":-97.3415},{"name":"Kansas City","state":"KS","lat":39.115733,"lon":-94.627139},{"name":"Topeka","state":"KS","lat":39.0541,"lon":-95.6719},{"name":"Salina","state":"KS","lat":38.823802,"lon":-97.608787},{"name":"Hutchinson","state":"KS","lat":38.054995,"lon":-97.931052},{"name":"Garden City","state":"KS","lat":37.97693,"lon":-100.862088},{"name":"Dodge City","state":"KS","lat":37.756882,"lon":-100.024074},{"name":"Hays","state":"KS","lat":38.878046,"lon":-99.320134},{"name":"Liberal","state":"KS","lat":37.043789,"lon":-100.92857},{"name":"Colby","state":"KS","lat":39.383038,"lon":-101.044169},{"name":"Goodland","state":"KS","lat":39.349099,"lon":-101.716396},{"name":"Scott City","state":"KS","lat":38.47994,"lon":-100.899331},{"name":"Great Bend","state":"KS","lat":38.370937,"lon":-98.783103},{"name":"Denver","state":"CO","lat":39.746931,"lon":-105.062036},{"name":"Colorado Springs","state":"CO","lat":38.8335,"lon":-104.8206},{"name":"Fort Collins","state":"CO","lat":40.581293,"lon":-105.103884},{"name":"Greeley","state":"CO","lat":40.413968,"lon":-104.704756},{"name":"Sterling","state":"CO","lat":40.63062,"lon":-103.221183},{"name":"Yuma","state":"CO","lat":40.130063,"lon":-102.707174},{"name":"Akron","state":"CO","lat":40.180315,"lon":-103.225885},{"name":"Burlington","state":"CO","lat":39.310649,"lon":-102.258281},{"name":"Lamar","state":"CO","lat":38.084136,"lon":-102.619195},{"name":"Pueblo","state":"CO","lat":38.287876,"lon":-104.584828},{"name":"Brush","state":"CO","lat":40.260255,"lon":-103.62788},{"name":"McCook","state":"NE","lat":40.204905,"lon":-100.627948}];
 const BRIEFS = [{"date":"2026-09-13","prev_date":null,"created_at":"2026-09-13T14:02Z","title":"Competition brief \u2014 2026-09-13","text":"Daily competition brief \u2014 2026-09-13\n\nNo prior scrape day yet, so overnight \u0394 isn't available. Once tomorrow's run lands, this brief will list who changed basis and by how much.\nToday's board: 2304 bids \u00b7 364 facilities.\n\nSame-town gaps (CHS vs competitor)\n\u2022 Hastings, NE Soybeans Sept26: CHS -0.20 vs CPI -0.50 (CHS over by 0.30)\n\u2022 Elm Creek, NE Corn Jan27: CHS -0.35 vs KAAPA -0.28 (CHS under by 0.07)\n\u2022 Hastings, NE Soybeans Sept26: CHS -0.20 vs AGP -0.25 (CHS over by 0.05)\n\u2022 Hastings, NE Soybeans Sept26: CHS -0.20 vs Central Valley Ag -0.25 (CHS over by 0.05)\n\u2022 Elm Creek, NE Corn Sept26: CHS -0.34 vs KAAPA -0.30 (CHS under by 0.04)","stats":{"bids_today":2304,"changes":0,"competitor_changes":0,"chs_changes":0,"gaps":5},"top_competitor_moves":[],"chs_moves":[],"clusters":[],"gaps":[{"chs_entity":"CHS Holdrege","competitor":"CPI","location":"Hastings","state":"NE","commodity":"Soybeans","delivery":"Sept26","chs_basis":-0.2,"comp_basis":-0.5,"gap":0.3},{"chs_entity":"CHS Holdrege","competitor":"KAAPA","location":"Elm Creek","state":"NE","commodity":"Corn","delivery":"Jan27","chs_basis":-0.35,"comp_basis":-0.28,"gap":-0.07},{"chs_entity":"CHS Holdrege","competitor":"AGP","location":"Hastings","state":"NE","commodity":"Soybeans","delivery":"Sept26","chs_basis":-0.2,"comp_basis":-0.25,"gap":0.05},{"chs_entity":"CHS Holdrege","competitor":"Central Valley Ag","location":"Hastings","state":"NE","commodity":"Soybeans","delivery":"Sept26","chs_basis":-0.2,"comp_basis":-0.25,"gap":0.05},{"chs_entity":"CHS Holdrege","competitor":"KAAPA","location":"Elm Creek","state":"NE","commodity":"Corn","delivery":"Sept26","chs_basis":-0.34,"comp_basis":-0.3,"gap":-0.04}]}];
 const SOURCES = [{"name":"Adams Land & Cattle","region":"NE","category":"feedlot","url":"https://adamslandandcattle.com/feed-procurement/"},{"name":"ADM Corn Processing","region":"NE","category":"ethanol_processor","url":"https://www.adm.com/en-us/products-services/crop-services/producer-cash-bids/"},{"name":"Ag Partners Cooperative","region":"KS","category":"coop","url":"https://agpartnerscoop.com/grain/cash-bids"},{"name":"Agfinity Inc.","region":"CO","category":"coop","url":"https://offers.agfinity.com/"},{"name":"AGP (Ag Processing Inc)","region":"NE/KS/CO+","category":"soy_processor","url":"https://www.agp.com/bids/"},{"name":"AgValley","region":"NE","category":"coop","url":"https://agvalley.com/cash-bids/"},{"name":"Alliance Ag & Grain","region":"KS","category":"coop","url":"https://www.aaggllc.com/grain/cash-bids"},{"name":"Amber Wave / Prairie Horizon","region":"KS","category":"ethanol_processor","url":"https://amberwaveusa.com/grain/"},{"name":"Ardent Mills","region":"CO","category":"mill","url":"https://www.ardentmills.com/"},{"name":"Aurora Cooperative","region":"NE","category":"coop","url":"https://www.auroracoop.com/grain/cash-bids/"},{"name":"Beller Feedlot","region":"NE","category":"feedlot","url":"https://www.bellerfeedlot.com/"},{"name":"Cargill Corn Processing","region":"NE","category":"ethanol_processor","url":"https://www.cargillag.com/locations/blair-ssna"},{"name":"Central Valley Ag (CVA)","region":"NE","category":"coop","url":"https://cvacoop.agricharts.com/markets/cash.php"},{"name":"Chief Ethanol Fuels","region":"NE","category":"ethanol_processor","url":"https://chiefind.com/ethanol/grain-bids/"},{"name":"CHS Inc. (Eastern CO / High Plains)","region":"CO","category":"coop","url":"https://www.chsinc.com/"},{"name":"CHS United Plains Ag","region":"KS/CO","category":"coop","url":"https://www.chsunitedplainsag.com/grain/cash-bids/"},{"name":"Colorado Agri Products (CAP)","region":"CO","category":"ethanol_processor","url":"http://www.coloradoagriproducts.com/"},{"name":"Conestoga Energy","region":"KS","category":"ethanol_processor","url":"https://conestogaenergy.com/grain-portal/"},{"name":"Country Partners Cooperative","region":"NE","category":"coop","url":"https://countrypartnerscoop.com/grain/cash-bids/"},{"name":"Darr Feedlot","region":"NE","category":"feedlot","url":"https://www.darrfeedlot.com/grain-buying/"},{"name":"E Energy Adams","region":"NE","category":"ethanol_processor","url":"https://www.eenergyadams.com/grain/cash-bids"},{"name":"East Kansas Agri-Energy (EKAE)","region":"KS","category":"ethanol_processor","url":"https://www.ekae.com/cash-bids/"},{"name":"Farmers Cooperative (Dorchester)","region":"NE","category":"coop","url":"https://www.farmersco-operative.com/grain/grain-cash-bids"},{"name":"Five Rivers Cattle Feeding","region":"CO","category":"feedlot","url":"https://www.fiveriverscattle.com/"},{"name":"Flagler Cooperative Association","region":"CO","category":"coop","url":"http://flaglercoop.com/cash-bids"},{"name":"Frenchman Valley Coop (FVC)","region":"NE","category":"coop","url":"https://www.fvcoop.com/cash-bids/"},{"name":"Front Range Energy","region":"CO","category":"ethanol_processor","url":"https://www.frontrangeenergy.com/"},{"name":"Frontier Ag Inc.","region":"KS","category":"coop","url":"https://frontieraginc.com/grain/cash-bids"},{"name":"Garden City Co-op","region":"KS","category":"coop","url":"https://www.gccoop.com/products-services/grain/cash-bids"},{"name":"Green Plains Inc.","region":"NE","category":"ethanol_processor","url":"https://www.gpreinc.com/grain-bids/"},{"name":"Innovative Livestock Services (ILS)","region":"KS","category":"feedlot","url":"https://ilsbeef.com/grain-purchasing/"},{"name":"KAAPA Ethanol Commodities","region":"NE","category":"ethanol_processor","url":"https://kaapaethanolcommodities.com/cash-bids/"},{"name":"Nesika Energy","region":"KS","category":"ethanol_processor","url":"https://www.nesikaenergyllc.com/our-current-grain-bids"},{"name":"Poky Feeders","region":"KS","category":"feedlot","url":"https://www.pokyfeeders.com/grain/"},{"name":"Pratt Feeders","region":"KS","category":"feedlot","url":"https://www.prattfeeders.com/"},{"name":"Pride Ag Resources","region":"KS","category":"coop","url":"https://www.prideag.com/cashbids"},{"name":"Roggen Farmers Elevator Association","region":"CO","category":"coop","url":"https://www.roggenfarmerselev.com/cash-bids"},{"name":"Scott Cooperative Association","region":"KS","category":"coop","url":"https://sca.marketplace.barchart.com/"},{"name":"Scoular / Pratt Energy","region":"KS","category":"ethanol_processor","url":"https://www.scoular.com/producer/cash-bids/"},{"name":"Seibert Equity Co-op","region":"CO","category":"coop","url":"https://seibertequity.com/markets/cash.php"},{"name":"Siouxland Ethanol","region":"NE","category":"ethanol_processor","url":"https://siouxlandethanol.com/grain-bids/"},{"name":"Skyland Grain","region":"KS","category":"coop","url":"https://skylandgrain.com/cash-bids"},{"name":"The Scoular Company (CO)","region":"CO","category":"merchant","url":"https://www.scoular.com/producer/cash-bids/"},{"name":"Trenton Agri-Products","region":"NE","category":"ethanol_processor","url":"https://www.trentonagriproducts.com/cash-bids/"},{"name":"Valero Renewables","region":"NE","category":"ethanol_processor","url":"https://www.valerobids.com/"},{"name":"Weskan Grain LLC","region":"KS","category":"merchant","url":"https://weskangrain.com/"},{"name":"Western Plains Energy","region":"KS","category":"ethanol_processor","url":"https://wpellc.com/grain/"}];
-const MAP_VERSION = 'v1.3';
+const MAP_VERSION = 'v1.4-working';
 const COLORS = {
   'Ethanol':'#1a7f37','Soybean Processing':'#8250df','Grain Elevator':'#0969da',
   'Pigs':'#bf8700','Feedyard':'#cf222e','Flour Mill':'#6e7781'
@@ -374,6 +475,7 @@ const allEntities = unique(FACILITIES.flatMap(f => f.entities)).sort();
 const allDates = unique(FACILITIES.flatMap(f => f.bids.map(b => b.date))).sort();
 
 let mapMode = 'basis';
+let chsHighlight = false;
 let rendering = false;
 let renderTimer = null;
 let lastDetail = null;
@@ -405,13 +507,327 @@ function toast(msg){
   window.__toast = setTimeout(() => t.classList.remove('show'), 1600);
 }
 
+const MODE_LABELS = ['Basis', 'Day-over-day', 'Heat · day', 'Heat · week'];
+const MODE_FROM_LABEL = {'Basis':'basis','Day-over-day':'dod','Heat · day':'heat_day','Heat · week':'heat_week'};
+const MODE_TO_LABEL = {basis:'Basis',dod:'Day-over-day',heat_day:'Heat · day',heat_week:'Heat · week'};
 function wireModeChips(){
-  makeChips(document.getElementById('modes'), ['Basis', 'Day-over-day'], mapMode==='dod'?'Day-over-day':'Basis', (v, s) => {
-    mapMode = (v === 'Day-over-day') ? 'dod' : 'basis';
+  makeChips(document.getElementById('modes'), MODE_LABELS, MODE_TO_LABEL[mapMode]||'Basis', (v, s) => {
+    mapMode = MODE_FROM_LABEL[v] || 'basis';
     [...s.parentNode.querySelectorAll('.chip')].forEach(c => c.classList.remove('on'));
     s.classList.add('on');
     updateDodNote(); scheduleRender();
   });
+}
+function wireChsDesk(){
+  const btn = document.getElementById('chsDeskBtn');
+  if(!btn) return;
+  btn.classList.toggle('on', chsHighlight);
+  const deskBtn = document.getElementById('copyDeskBtn');
+  if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+  btn.onclick = () => {
+    chsHighlight = !chsHighlight;
+    btn.classList.toggle('on', chsHighlight);
+    if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+    const gapsBtn = document.getElementById('copyGapsBtn');
+    if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
+    renderGapRadar();
+    scheduleRender();
+  };
+  btn.onkeydown = (e) => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); } };
+  renderGapRadar();
+}
+function isChsFacility(f){
+  const own = (f.ownership||'').toLowerCase();
+  if(own.includes('chs')) return true;
+  if((f.entities||[]).some(e => String(e).toLowerCase().includes('chs'))) return true;
+  return (f.bids||[]).some(b => String(b.entity||'').toLowerCase().includes('chs') || String(b.ownership||'').toLowerCase().includes('chs'));
+}
+
+function isChsEntityName(s){
+  return /chs/i.test(String(s||''));
+}
+function isChsBid(b){
+  return isChsEntityName(b && b.entity) || isChsEntityName(b && b.ownership);
+}
+function fmtBasis(n){
+  const x = Number(n);
+  if(!Number.isFinite(x)) return '—';
+  return (x>=0?'+':'') + x.toFixed(2);
+}
+function haversineMiles(lat1, lon1, lat2, lon2){
+  const R = 3958.8;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function closeSidebarAfterJump(){
+  hideSearchResults();
+  const q = document.getElementById('q');
+  if(q) q.blur();
+  if(isMobile()){
+    sidebar.classList.remove('open');
+    const btn = document.getElementById('toggleFilters');
+    if(btn) btn.textContent = 'Filters';
+  }
+}
+function gapPhrase(gap){
+  const abs = Math.abs(gap);
+  if(gap > 0.0005) return { cls:'gap-over', text:`CHS over by ${abs.toFixed(2)}` };
+  if(gap < -0.0005) return { cls:'gap-under', text:`CHS under by ${abs.toFixed(2)}` };
+  return { cls:'gap-amt', text:`CHS even (0.00)` };
+}
+function filterLabelSummary(){
+  const comm = selComm.size === allCommodities.length ? 'all commodities' : [...selComm].sort().join(', ');
+  const del = [...selDel].sort((a,b)=>{
+    const ka=deliveryKey(a), kb=deliveryKey(b); return ka[0]-kb[0]||ka[1]-kb[1];
+  }).join(', ') || '—';
+  return { comm, del, date: allDates[allDates.length-1] || '' };
+}
+
+/** Build CHS vs competitor gap rows for current filters. */
+function computeGapRadar(limit){
+  const lim = limit || 25;
+  const latest = allDates[allDates.length-1];
+  const sameTown = [];
+  const nearby = [];
+
+  // Index non-CHS filtered bids by town key and keep facility refs for distance
+  const nonChs = [];
+  FACILITIES.forEach(f => {
+    if(selType.size && !selType.has(f.facility_type)) return;
+    if(isChsFacility(f)) return;
+    const bids = filteredBids(f).filter(b => !isChsBid(b));
+    if(!bids.length) return;
+    nonChs.push({ f, bids });
+  });
+
+  FACILITIES.forEach(f => {
+    if(selType.size && !selType.has(f.facility_type)) return;
+    if(!isChsFacility(f)) return;
+    const use = filteredBids(f).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+    const chsList = use.length ? use : filteredBids(f);
+    chsList.forEach(cb => {
+      // same town
+      nonChs.forEach(({ f:g, bids }) => {
+        if(g.location !== f.location || g.state !== f.state) return;
+        bids.forEach(ob => {
+          if(ob.commodity !== cb.commodity || ob.delivery !== cb.delivery) return;
+          const gap = Number(cb.basis) - Number(ob.basis);
+          sameTown.push({
+            chsFac: f, compFac: g, commodity: cb.commodity, delivery: cb.delivery,
+            chs_basis: Number(cb.basis), comp_basis: Number(ob.basis),
+            competitor: ob.entity, gap, miles: 0, sameTown: true
+          });
+        });
+      });
+      // nearby candidates (filled later if thin)
+      nonChs.forEach(({ f:g, bids }) => {
+        if(g.location === f.location && g.state === f.state) return;
+        if(f.lat==null || g.lat==null) return;
+        const miles = haversineMiles(f.lat, f.lon, g.lat, g.lon);
+        if(miles > 25.01) return;
+        bids.forEach(ob => {
+          if(ob.commodity !== cb.commodity || ob.delivery !== cb.delivery) return;
+          const gap = Number(cb.basis) - Number(ob.basis);
+          nearby.push({
+            chsFac: f, compFac: g, commodity: cb.commodity, delivery: cb.delivery,
+            chs_basis: Number(cb.basis), comp_basis: Number(ob.basis),
+            competitor: ob.entity, gap, miles, sameTown: false
+          });
+        });
+      });
+    });
+  });
+
+  // Deduplicate by chs loc+comm+del+competitor entity+comp loc
+  function dedupe(arr){
+    const seen = new Set();
+    const out = [];
+    arr.forEach(r => {
+      const k = [r.chsFac.location, r.chsFac.state, r.commodity, r.delivery, r.competitor, r.compFac.location, r.compFac.state].join('|');
+      if(seen.has(k)) return;
+      seen.add(k);
+      out.push(r);
+    });
+    return out;
+  }
+  let rows = dedupe(sameTown);
+  rows.sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+  if(rows.length < 12){
+    const extra = dedupe(nearby).sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+    const seen = new Set(rows.map(r => [r.chsFac.location,r.chsFac.state,r.commodity,r.delivery,r.competitor,r.compFac.location].join('|')));
+    for(const r of extra){
+      const k = [r.chsFac.location,r.chsFac.state,r.commodity,r.delivery,r.competitor,r.compFac.location].join('|');
+      if(seen.has(k)) continue;
+      rows.push(r); seen.add(k);
+      if(rows.length >= lim) break;
+    }
+  }
+  rows.sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+  return rows.slice(0, lim);
+}
+
+function formatGapLine(r){
+  const loc = `${r.chsFac.location} ${r.chsFac.state}`;
+  const ph = gapPhrase(r.gap);
+  const near = r.sameTown ? '' : ` · ~${r.miles.toFixed(0)}mi`;
+  return {
+    text: `${loc} · ${r.commodity} ${r.delivery} · CHS ${fmtBasis(r.chs_basis)} vs ${r.competitor} ${fmtBasis(r.comp_basis)} (${ph.text})${near}`,
+    ph
+  };
+}
+
+function renderGapRadar(){
+  const box = document.getElementById('gapRadar');
+  const list = document.getElementById('gapRadarList');
+  const meta = document.getElementById('gapRadarMeta');
+  const deskBtn = document.getElementById('copyDeskBtn');
+  const gapsBtn = document.getElementById('copyGapsBtn');
+  if(!box || !list) return;
+  if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+  if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
+  if(!chsHighlight){
+    box.classList.remove('open');
+    list.innerHTML = '';
+    return;
+  }
+  box.classList.add('open');
+  const rows = computeGapRadar(25);
+  window.__lastGaps = rows;
+  const sum = filterLabelSummary();
+  meta.textContent = rows.length
+    ? `Top ${rows.length} |gap| · ${sum.del} · ${sum.date}`
+    : `No CHS vs competitor gaps for ${sum.del}`;
+  list.innerHTML = '';
+  if(!rows.length){
+    list.innerHTML = '<div class="note">No same-town or ≤25mi competitor posts match current filters.</div>';
+    return;
+  }
+  rows.forEach((r, idx) => {
+    const { text, ph } = formatGapLine(r);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gap-row';
+    btn.innerHTML = `<span class="gap-loc">${r.chsFac.location} ${r.chsFac.state}</span> · ${r.commodity} ${r.delivery}<br>CHS ${fmtBasis(r.chs_basis)} vs ${r.competitor} ${fmtBasis(r.comp_basis)} (<span class="${ph.cls}">${ph.text}</span>)${r.sameTown?'':` · ~${r.miles.toFixed(0)}mi`}`;
+    btn.onclick = () => {
+      jumpToFacility(r.chsFac);
+    };
+    list.appendChild(btn);
+  });
+}
+
+/** Competitors under pin detail for CHS bids. */
+function buildCompetitorStrip(f, rows){
+  const hasChs = isChsFacility(f) || (rows||[]).some(isChsBid);
+  if(!hasChs) return null;
+  const chsBids = (rows||[]).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+  const use = chsBids.length ? chsBids : (isChsFacility(f) ? rows : []);
+  if(!use || !use.length) return null;
+
+  const blocks = [];
+  use.forEach(cb => {
+    // gather competitors
+    const same = [];
+    const near = [];
+    FACILITIES.forEach(g => {
+      if(g === f) return;
+      if(isChsFacility(g)) return;
+      if(selType.size && !selType.has(g.facility_type)) return;
+      const obids = filteredBids(g).filter(b => !isChsBid(b) && b.commodity===cb.commodity && b.delivery===cb.delivery);
+      if(!obids.length) return;
+      const sameTown = g.location===f.location && g.state===f.state;
+      const miles = (f.lat!=null && g.lat!=null) ? haversineMiles(f.lat,f.lon,g.lat,g.lon) : 9999;
+      obids.forEach(ob => {
+        const item = { g, ob, miles, gap: Number(cb.basis)-Number(ob.basis), sameTown };
+        if(sameTown) same.push(item);
+        else if(miles <= 25.01) near.push(item);
+      });
+    });
+    let picks = same;
+    if(!picks.length){
+      near.sort((a,b) => a.miles - b.miles || Math.abs(b.gap)-Math.abs(a.gap));
+      // nearest up to ~3 competitors (unique facilities)
+      const seen = new Set();
+      picks = [];
+      for(const it of near){
+        const k = it.g.ownership+'|'+it.g.location;
+        if(seen.has(k)) continue;
+        seen.add(k);
+        picks.push(it);
+        if(picks.length >= 3) break;
+      }
+    } else {
+      picks.sort((a,b) => Math.abs(b.gap)-Math.abs(a.gap));
+    }
+    blocks.push({ cb, picks });
+  });
+  return blocks;
+}
+
+function renderCompetitorStrip(f, rows){
+  const box = document.getElementById('competitorsBox');
+  if(!box) return;
+  const blocks = buildCompetitorStrip(f, rows);
+  if(!blocks){
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  box.style.display = 'block';
+  let html = '<h3>Competitors</h3>';
+  let any = false;
+  blocks.forEach(({ cb, picks }) => {
+    html += `<div class="comp-block"><div class="comp-head">${cb.commodity} ${cb.delivery} · CHS ${fmtBasis(cb.basis)}</div>`;
+    if(!picks.length){
+      html += `<div class="comp-empty">No same-town or ≤25mi competitor posts</div>`;
+    } else {
+      any = true;
+      picks.forEach(it => {
+        const ph = gapPhrase(it.gap);
+        const where = it.sameTown
+          ? `${it.ob.entity} · ${it.g.location}`
+          : `${it.ob.entity} · ${it.g.location} (~${it.miles.toFixed(0)}mi)`;
+        html += `<div class="comp-line">${where}: ${fmtBasis(it.ob.basis)} <span class="${ph.cls}">(${ph.text})</span></div>`;
+      });
+    }
+    html += '</div>';
+  });
+  box.innerHTML = html;
+}
+
+function buildDeskSheetText(){
+  const sum = filterLabelSummary();
+  const lines = [];
+  lines.push(`CHS desk sheet — ${sum.date}`);
+  lines.push(`Filters: ${sum.comm} · ${sum.del}`);
+  lines.push('');
+  lines.push('CHS bids');
+  let chsN = 0;
+  FACILITIES.forEach(f => {
+    if(selType.size && !selType.has(f.facility_type)) return;
+    if(!isChsFacility(f)) return;
+    const bids = filteredBids(f).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+    const list = bids.length ? bids : (isChsFacility(f) ? filteredBids(f) : []);
+    list.forEach(b => {
+      chsN++;
+      lines.push(`${f.location}, ${f.state} · ${b.commodity} ${b.delivery} · ${fmtBasis(b.basis)} (${b.entity})`);
+    });
+  });
+  if(!chsN) lines.push('(none for current filters)');
+  lines.push('');
+  lines.push('Gap radar');
+  const gaps = (chsHighlight && window.__lastGaps && window.__lastGaps.length)
+    ? window.__lastGaps
+    : computeGapRadar(25);
+  if(!gaps.length) lines.push('(no gaps)');
+  else gaps.forEach(r => lines.push(formatGapLine(r).text));
+  return lines.join('\n');
+}
+function deltaField(){
+  if(mapMode==='heat_week') return 'week_change';
+  if(mapMode==='dod' || mapMode==='heat_day') return 'change';
+  return null;
 }
 function wireCommChips(){
   makeChips(document.getElementById('commodities'), allCommodities, selComm, (v,s)=>{ if(selComm.has(v)) selComm.delete(v); else selComm.add(v); s.classList.toggle('on'); scheduleRender(); });
@@ -430,16 +846,54 @@ function wireDelChips(){
   });
 }
 
-wireModeChips(); wireCommChips(); wireTypeChips(); wireDelChips();
+wireModeChips(); wireChsDesk();
+
+function renderSources(){
+  const box = document.getElementById('sourcesList');
+  if(!box || typeof SOURCES === 'undefined') return;
+  box.innerHTML = '';
+  SOURCES.forEach(s => {
+    const a = document.createElement('a');
+    a.href = s.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = s.name;
+    if(s.region){
+      const meta = document.createElement('span');
+      meta.className = 'src-meta';
+      meta.textContent = '(' + s.region + ')';
+      a.appendChild(document.createTextNode(' '));
+      a.appendChild(meta);
+    }
+    box.appendChild(a);
+  });
+}
+renderSources();
+ wireCommChips(); wireTypeChips(); wireDelChips();
 fillSelect(document.getElementById('entity'), allEntities);
 
 function updateDodNote(){
   const note = document.getElementById('dodNote');
-  if(mapMode !== 'dod'){ note.style.display='none'; return; }
+  const oneDay = allDates.length < 2;
+  const latest = allDates[allDates.length-1] || 'today';
+  const prev = allDates.length >= 2 ? allDates[allDates.length-2] : null;
+  if(mapMode === 'basis'){ note.style.display='none'; return; }
   note.style.display='block';
-  note.textContent = allDates.length < 2
-    ? 'Day-over-day needs 2+ scrape dates. Only '+(allDates[0]||'one day')+' loaded.'
-    : 'Comparing '+allDates[allDates.length-1]+' vs '+allDates[allDates.length-2]+'.';
+  if(mapMode === 'dod'){
+    note.textContent = oneDay
+      ? 'Day-over-day needs 2+ scrape dates. Only '+(allDates[0]||'one day')+' loaded — Δ will appear when history exists.'
+      : 'Comparing '+latest+' vs '+prev+'. Green = basis up, red = down.';
+  } else if(mapMode === 'heat_day'){
+    note.textContent = oneDay
+      ? 'Heat · day needs 2+ scrape dates. Only '+(allDates[0]||'one day')+' loaded — halo sizes appear when overnight Δ exists. Green = basis up, red = down.'
+      : 'Heat · day: overnight Δ vs '+prev+'. Halo size = |avg Δ|. Green = basis up, red = down.';
+  } else if(mapMode === 'heat_week'){
+    note.textContent = oneDay
+      ? 'Heat · week needs 2+ scrape dates. Only '+(allDates[0]||'one day')+' loaded — week Δ appears when history exists. Green = basis up, red = down.'
+      : 'Heat · week: Δ vs oldest scrape in last 7 days of history. Halo size = |avg Δ|. Green = basis up, red = down.';
+  } else {
+    note.style.display='none';
+  }
 }
 function selectedOptions(sel){ return [...sel.selectedOptions].map(o => o.value); }
 function bidKey(b){ return [b.entity, b.commodity, b.delivery, b.futures_month||''].join('|'); }
@@ -451,7 +905,7 @@ function filteredBids(f){
   const maxb = parseFloat(document.getElementById('maxb').value);
   const latest = allDates[allDates.length-1];
   return f.bids.filter(b => {
-    if(mapMode === 'basis' && latest && b.date !== latest) return false;
+    if(latest && b.date !== latest) return false;
     if(selComm.size && !selComm.has(b.commodity)) return false;
     if(selDel.size && !selDel.has(b.delivery)) return false;
     if(ents.length && !ents.includes(b.entity)) return false;
@@ -466,13 +920,22 @@ function filteredBids(f){
 }
 
 function computeChanges(f, bidsLatest){
-  if(allDates.length < 2) return { rows: bidsLatest.map(b => ({...b, change:null})) };
-  const prev = allDates[allDates.length-2];
-  const prevMap = {};
-  f.bids.filter(b => b.date === prev).forEach(b => { prevMap[bidKey(b)] = b.basis; });
+  // Prefer precomputed change / week_change on skinny latest-day bids.
+  // Fall back to client DoD if prior scrape day is still embedded.
+  const prev = allDates.length >= 2 ? allDates[allDates.length-2] : null;
+  let prevMap = null;
+  if(prev){
+    prevMap = {};
+    f.bids.filter(b => b.date === prev).forEach(b => { prevMap[bidKey(b)] = b.basis; });
+  }
   return { rows: bidsLatest.map(b => {
-    const p = prevMap[bidKey(b)];
-    return {...b, change: (p===undefined ? null : (b.basis - p))};
+    let change = (b.change !== undefined) ? b.change : null;
+    let week_change = (b.week_change !== undefined) ? b.week_change : null;
+    if(change === null && prevMap){
+      const p = prevMap[bidKey(b)];
+      if(p !== undefined) change = b.basis - p;
+    }
+    return {...b, change, week_change};
   })};
 }
 
@@ -498,9 +961,11 @@ function underLines(bids){
     const basis = (b.basis>=0?'+':'') + Number(b.basis).toFixed(2);
     let cls = commClass(b.commodity);
     let delta = '';
-    if(mapMode==='dod' && b.change!==null && b.change!==undefined){
-      cls += b.change>0.004?' chg-up':(b.change<-0.004?' chg-down':'');
-      delta = (b.change>=0?'+':'')+b.change.toFixed(2);
+    const df = deltaField();
+    const dv = df ? b[df] : null;
+    if(df && dv!==null && dv!==undefined){
+      cls += dv>0.004?' chg-up':(dv<-0.004?' chg-down':'');
+      delta = (dv>=0?'+':'')+Number(dv).toFixed(2);
     }
     const letter = COMM_LETTER[b.commodity] || '';
     const dlt = delta ? ` (Δ${delta})` : '';
@@ -520,12 +985,24 @@ function underLines(bids){
   });
 }
 
-function changeColor(rows){
-  const nums = rows.map(r => r.change).filter(x => x!==null && x!==undefined);
+function changeColor(rows, field){
+  const key = field || 'change';
+  const nums = rows.map(r => r[key]).filter(x => x!==null && x!==undefined);
   if(!nums.length) return '#8c959f';
   const avg = nums.reduce((a,b)=>a+b,0)/nums.length;
   if(Math.abs(avg)<0.005) return '#8c959f';
   return avg>0 ? '#1a7f37' : '#cf222e';
+}
+function avgAbsDelta(rows, field){
+  const key = field || 'change';
+  const nums = rows.map(r => r[key]).filter(x => x!==null && x!==undefined).map(Math.abs);
+  if(!nums.length) return 0;
+  return nums.reduce((a,b)=>a+b,0)/nums.length;
+}
+function heatHaloPx(avgAbs){
+  // Soft halo sized by |Δ|; capped so map stays readable
+  if(!avgAbs || avgAbs < 0.004) return 0;
+  return Math.max(22, Math.min(56, 18 + avgAbs * 120));
 }
 
 function scheduleRender(fit){
@@ -598,7 +1075,14 @@ function render(){
         if(d < nearest) nearest = d;
       }
       return { item, nearest };
-    }).sort((a,b)=> b.nearest - a.nearest);
+    }).sort((a,b)=> {
+      if(chsHighlight){
+        const ac = isChsFacility(a.item.f) ? 1 : 0;
+        const bc = isChsFacility(b.item.f) ? 1 : 0;
+        if(ac !== bc) return bc - ac;
+      }
+      return b.nearest - a.nearest;
+    });
 
     const showTextFor = new Set();
     const placed = [];
@@ -614,10 +1098,14 @@ function render(){
     items.forEach(({ f, bids, rows }) => {
       pins++; bidCount += bids.length;
       bounds.push([f.lat, f.lon]);
-      const color = mapMode==='dod' ? changeColor(rows) : (COLORS[f.facility_type]||'#6e7781');
+      const df = deltaField();
+      const heatMode = mapMode==='heat_day' || mapMode==='heat_week';
+      const color = (mapMode==='dod' || heatMode) ? changeColor(rows, df || 'change') : (COLORS[f.facility_type]||'#6e7781');
       const key = f.ownership+'|'+f.location+'|'+f.state;
       const lines = underLines(rows);
       const show = showTextFor.has(key);
+      const chs = isChsFacility(f);
+      const faded = chsHighlight && !chs;
 
       let under = '';
       if(show && lines.length && detail !== 'dot'){
@@ -646,13 +1134,26 @@ function render(){
         under = `<div class="bid-under">${body}</div>`;
       }
 
-      const html = `<div class="bid-marker"><div class="bid-dot" style="background:${color}"></div>${under}</div>`;
+      let halo = '';
+      if(heatMode){
+        const abs = avgAbsDelta(rows, df || 'change');
+        const px = heatHaloPx(abs);
+        if(px > 0){
+          halo = `<div class="bid-halo" style="width:${px}px;height:${px}px;background:${color}"></div>`;
+        } else {
+          halo = `<div class="bid-halo" style="width:20px;height:20px;background:#8c959f;opacity:.22"></div>`;
+        }
+      }
+      const mcls = 'bid-marker' + (chs && chsHighlight ? ' chs-ring' : '') + (faded ? ' faded' : '');
+      const html = `<div class="${mcls}">${halo}<div class="bid-dot" style="background:${color}"></div>${under}</div>`;
       const lineCount = (show && detail!=='dot') ? ((detail==='full'?1:0) + lines.length) : 0;
       const h = 20 + lineCount * 14;
       const w = (show && detail!=='dot') ? (detail==='basis' ? 72 : (detail==='month' ? 100 : 168)) : 24;
       const marker = L.marker([f.lat, f.lon], {
         icon: L.divIcon({ className: 'bid-divicon', html, iconSize: [w, h], iconAnchor: [w/2, 10] }),
-        keyboard: false
+        keyboard: false,
+        opacity: faded ? 0.32 : 1,
+        zIndexOffset: (chs && chsHighlight) ? 400 : 0
       });
       marker.on('click', () => showDetail(f, rows));
       marker.bindTooltip(`${f.ownership} · ${f.location}, ${f.state}`, { direction:'top', offset:[0,-12] });
@@ -666,6 +1167,7 @@ function render(){
       map.fitBounds(bounds, { padding:[30,30], maxZoom:8 });
     }
     renderTowns();
+    renderGapRadar();
   } finally {
     rendering = false;
   }
@@ -678,27 +1180,44 @@ function formatRows(f, rows){
   });
 }
 
-function showDetail(f, rows){
+function showDetail(f, rows, opts){
+  const options = opts || {};
   lastDetail = { f, rows: formatRows(f, rows) };
   const box = document.getElementById('detail');
   box.style.display = 'block';
   document.getElementById('dtitle').textContent = `${f.ownership} · ${f.location}, ${f.state}`;
-  document.getElementById('dsub').textContent = f.facility_type + (mapMode==='dod' ? ' · day-over-day' : '');
+  const modeTag = mapMode==='dod' ? ' · day-over-day'
+    : (mapMode==='heat_day' ? ' · heat · day' : (mapMode==='heat_week' ? ' · heat · week' : ''));
+  document.getElementById('dsub').textContent = f.facility_type + modeTag;
   const body = document.getElementById('dbody');
   body.innerHTML = '';
+  const df = deltaField() || 'change';
   lastDetail.rows.forEach(b => {
     const tr = document.createElement('tr');
     const cls = b.basis >= 0 ? 'basis-pos' : 'basis-neg';
-    const d = b.change;
+    const d = b[df];
     const dcls = d===null||d===undefined ? '' : (d>0.004?'basis-pos':(d<-0.004?'basis-neg':''));
-    const dtxt = (d===null||d===undefined) ? '' : ((d>=0?'+':'')+d.toFixed(2));
+    const dtxt = (d===null||d===undefined) ? '' : ((d>=0?'+':'')+Number(d).toFixed(2));
     tr.innerHTML = `<td>${b.entity}</td><td class="${commClass(b.commodity)}">${b.commodity}</td><td>${b.delivery}</td><td>${b.futures_month||''}</td><td class="${cls}">${Number(b.basis).toFixed(2)}</td><td class="${dcls}">${dtxt}</td>`;
     body.appendChild(tr);
   });
-  if(isMobile()){ sidebar.classList.add('open'); document.getElementById('toggleFilters').textContent='Close'; box.scrollIntoView({behavior:'smooth', block:'start'}); }
+  renderCompetitorStrip(f, lastDetail.rows);
+  if(options.fromSearch){
+    closeSidebarAfterJump();
+    // On mobile keep detail reachable: reopen briefly? Spec: close filters so map visible.
+    // Detail stays in DOM; user can open Filters to see it. On desktop detail is in sidebar.
+    if(!isMobile()){
+      // desktop sidebar always visible — scroll detail into view
+      box.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+  } else if(isMobile()){
+    sidebar.classList.add('open');
+    document.getElementById('toggleFilters').textContent='Close';
+    box.scrollIntoView({behavior:'smooth', block:'start'});
+  }
 }
 
-async function copyText(text){
+async async function copyText(text){
   try {
     await navigator.clipboard.writeText(text);
     toast('Copied');
@@ -726,6 +1245,40 @@ document.getElementById('copyLocation').onclick = () => {
   copyText(`${f.ownership} · ${f.location}, ${f.state}`);
 };
 
+
+function buildGapRadarTsv(rows){
+  const list = rows || window.__lastGaps || computeGapRadar(25);
+  const header = ['Location','State','Commodity','Delivery','CHS_basis','Competitor','Comp_basis','Gap','CHS_vs','Miles','Same_town'];
+  const lines = [header.join('\t')];
+  list.forEach(r => {
+    const vs = r.gap > 0.004 ? 'over' : (r.gap < -0.004 ? 'under' : 'flat');
+    lines.push([
+      r.chsFac.location,
+      r.chsFac.state,
+      r.commodity,
+      r.delivery,
+      Number(r.chs_basis).toFixed(2),
+      r.competitor,
+      Number(r.comp_basis).toFixed(2),
+      (r.gap>=0?'+':'') + Number(r.gap).toFixed(2),
+      vs,
+      r.sameTown ? '0' : Number(r.miles).toFixed(1),
+      r.sameTown ? 'yes' : 'no'
+    ].join('\t'));
+  });
+  return lines.join('\n');
+}
+
+document.getElementById('copyDeskBtn').onclick = () => {
+  const text = buildDeskSheetText();
+  copyText(text);
+};
+document.getElementById('copyGapsBtn').onclick = () => {
+  const rows = window.__lastGaps && window.__lastGaps.length ? window.__lastGaps : computeGapRadar(25);
+  if(!rows.length){ toast('No gaps to copy'); return; }
+  copyText(buildGapRadarTsv(rows));
+};
+
 map.on('zoomend', () => scheduleRender(false));
 map.on('moveend', () => scheduleRender(false));
 
@@ -744,10 +1297,86 @@ document.getElementById('reset').onclick = () => {
   document.getElementById('detail').style.display='none';
   lastDetail = null;
   mapMode='basis';
-  wireModeChips();
+  chsHighlight=false;
+  wireModeChips(); wireChsDesk();
+  hideSearchResults();
   updateDodNote(); scheduleRender(true);
 };
-document.getElementById('q').addEventListener('keydown', e => { if(e.key==='Enter') scheduleRender(true); });
+function hideSearchResults(){
+  const box = document.getElementById('qResults');
+  if(box){ box.classList.remove('open'); box.innerHTML=''; }
+}
+function searchFacilities(q){
+  const qq = (q||'').trim().toLowerCase();
+  if(!qq) return [];
+  const hits = [];
+  for(const f of FACILITIES){
+    if(selType.size && !selType.has(f.facility_type)) continue;
+    const hay = (f.location+' '+f.ownership+' '+f.state+' '+(f.entities||[]).join(' ')).toLowerCase();
+    if(!hay.includes(qq)) continue;
+    hits.push(f);
+    if(hits.length >= 8) break;
+  }
+  return hits;
+}
+function jumpToFacility(f, opts){
+  if(!f || f.lat==null || f.lon==null) return;
+  const options = opts || {};
+  // Close search UI first so map is visible (mobile + desktop)
+  if(options.fromSearch){
+    closeSidebarAfterJump();
+  } else {
+    hideSearchResults();
+  }
+  map.setView([f.lat, f.lon], Math.max(map.getZoom(), 10.5), { animate:true });
+  const bids = filteredBids(f);
+  const { rows } = computeChanges(f, bids.length ? bids : (f.bids||[]).filter(b => b.date === allDates[allDates.length-1]));
+  showDetail(f, rows, options);
+}
+function renderSearchResults(hits){
+  const box = document.getElementById('qResults');
+  if(!box) return;
+  box.innerHTML = '';
+  if(!hits.length){ box.classList.remove('open'); return; }
+  hits.forEach((f, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('role','option');
+    btn.innerHTML = `<strong>${f.ownership} · ${f.location}, ${f.state||''}</strong><span class="q-meta">${f.facility_type}</span>`;
+    btn.onclick = () => { jumpToFacility(f, { fromSearch:true }); };
+    box.appendChild(btn);
+  });
+  box.classList.add('open');
+}
+let searchTimer = null;
+const qInput = document.getElementById('q');
+qInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const hits = searchFacilities(qInput.value);
+    renderSearchResults(hits);
+    scheduleRender(false);
+  }, 180);
+});
+qInput.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){ hideSearchResults(); return; }
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    const hits = searchFacilities(qInput.value);
+    if(hits.length >= 1){
+      jumpToFacility(hits[0], { fromSearch:true });
+    } else {
+      hideSearchResults();
+      if(qInput) qInput.blur();
+    }
+    scheduleRender(true);
+  }
+});
+qInput.addEventListener('blur', () => { setTimeout(hideSearchResults, 180); });
+document.addEventListener('click', (e) => {
+  const wrap = e.target.closest && e.target.closest('.search-wrap');
+  if(!wrap) hideSearchResults();
+});
 document.getElementById('entity').addEventListener('change', () => scheduleRender(false));
 document.getElementById('toggleFilters').onclick = () => {
   const open=sidebar.classList.toggle('open');
