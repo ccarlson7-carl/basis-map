@@ -215,7 +215,8 @@
     box-shadow: 0 0 0 3px #0550ae, 0 1px 3px rgba(0,0,0,.28);
     border-width: 3px; border-color: #fff;
   }
-  .bid-marker.faded { opacity: 0.3; }
+  .bid-marker.faded { opacity: 0.28; }
+  .bid-marker.focus-bright { opacity: 1; }
   .chip.toggle.on { background: #0550ae; border-color: #0550ae; color: #fff; }
   .chip.toggle { background: #fff; }
   .search-wrap { position: relative; }
@@ -654,6 +655,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_L
 L.geoJSON(COUNTIES, { style:{ color:'#afb8c1', weight:0.6, fill:false, opacity:0.9 } }).addTo(map);
 L.geoJSON(STATES, { style:{ color:'#656d76', weight:1.8, fill:false, opacity:1 } }).addTo(map);
 
+const linkLayer = L.layerGroup().addTo(map);
 const layer = L.layerGroup().addTo(map);
 const townLayer = L.layerGroup().addTo(map);
 const sidebar = document.getElementById('sidebar');
@@ -671,12 +673,67 @@ let chsHighlight = false;
 let rendering = false;
 let renderTimer = null;
 let lastDetail = null;
+let focusFacility = null; // facility object when pin card open
+let focusBrightKeys = null; // Set of ownership|location|state kept bright, or null
 let selection = new Map(); // facKey -> facility
 let selectMode = false;
 function facKey(f){
   return (f.ownership||'')+'|'+(f.location||'')+'|'+(f.state||'');
 }
 function isSelected(f){ return selection.has(facKey(f)); }
+
+const FOCUS_LINK_CAP = 12;
+function clearFocusLinks(){
+  linkLayer.clearLayers();
+}
+function clearPinFocus(){
+  const had = !!focusFacility || !!focusBrightKeys;
+  focusFacility = null;
+  focusBrightKeys = null;
+  clearFocusLinks();
+  if(had) scheduleRender(false);
+}
+/** Unique gap-counterpart facilities, gaps already sorted same-town / |gap| / miles. */
+function competitorEntriesFromGaps(gaps){
+  const seen = new Set();
+  const list = [];
+  (gaps || []).forEach(r => {
+    const k = (r.other_own||'')+'|'+(r.other_loc||'')+'|'+(r.other_state||'');
+    if(!k || k === '||' || seen.has(k)) return;
+    seen.add(k);
+    list.push({ key:k, gap:r.gap, miles:r.miles, sameTown:r.sameTown });
+  });
+  return list.slice(0, FOCUS_LINK_CAP);
+}
+function rebuildFocusLinks(f, comps){
+  clearFocusLinks();
+  if(!f || f.lat==null || f.lon==null || !comps || !comps.length) return;
+  const byKey = new Map();
+  FACILITIES.forEach(g => {
+    if(g.lat==null || g.lon==null) return;
+    byKey.set(facKey(g), g);
+  });
+  comps.forEach(c => {
+    const g = byKey.get(c.key);
+    if(!g) return;
+    L.polyline([[f.lat, f.lon], [g.lat, g.lon]], {
+      color: '#7d8a96',
+      weight: 1.4,
+      opacity: 0.6,
+      interactive: false,
+      className: 'focus-link'
+    }).addTo(linkLayer);
+  });
+}
+function setPinFocus(f, gaps){
+  if(!f){ clearPinFocus(); return; }
+  const comps = competitorEntriesFromGaps(gaps);
+  focusFacility = f;
+  focusBrightKeys = new Set([facKey(f)]);
+  comps.forEach(c => focusBrightKeys.add(c.key));
+  rebuildFocusLinks(f, comps);
+  scheduleRender(false);
+}
 
 const selComm = new Set(allCommodities);
 const selType = new Set(allTypes);
@@ -774,6 +831,7 @@ function closePinCard(){
   if(!m) return;
   m.classList.remove('open');
   m.setAttribute('aria-hidden','true');
+  clearPinFocus();
 }
 function syncPinAddBtn(){
   const btn = document.getElementById('pinAddSelBtn');
@@ -1512,7 +1570,13 @@ function render(){
       const lines = underLines(rows);
       const show = showTextFor.has(key);
       const chs = isChsFacility(f);
-      const faded = chsHighlight && !chs;
+      // Pin focus wins over CHS desk dimming: focus subset stays brightest
+      let faded = false;
+      if(focusBrightKeys){
+        faded = !focusBrightKeys.has(key);
+      } else if(chsHighlight && !chs){
+        faded = true;
+      }
 
       let under = '';
       if(show && lines.length && detail !== 'dot'){
@@ -1551,7 +1615,8 @@ function render(){
           halo = `<div class="bid-halo" style="width:20px;height:20px;background:#8c959f;opacity:.22"></div>`;
         }
       }
-      const mcls = 'bid-marker' + (chs && chsHighlight ? ' chs-ring' : '') + (faded ? ' faded' : '') + (isSelected(f) ? ' sel-ring' : '');
+      const inFocus = !!(focusBrightKeys && focusBrightKeys.has(key));
+      const mcls = 'bid-marker' + (chs && chsHighlight ? ' chs-ring' : '') + (faded ? ' faded' : '') + (isSelected(f) ? ' sel-ring' : '') + (inFocus ? ' focus-bright' : '');
       const html = `<div class="${mcls}">${halo}<div class="bid-dot" style="background:${color}"></div>${under}</div>`;
       const lineCount = (show && detail!=='dot') ? ((detail==='full'?1:0) + lines.length) : 0;
       const h = 20 + lineCount * 14;
@@ -1559,10 +1624,14 @@ function render(){
       const marker = L.marker([f.lat, f.lon], {
         icon: L.divIcon({ className: 'bid-divicon', html, iconSize: [w, h], iconAnchor: [w/2, 10] }),
         keyboard: false,
-        opacity: faded ? 0.32 : 1,
-        zIndexOffset: (chs && chsHighlight) ? 400 : 0
+        opacity: faded ? 0.28 : 1,
+        zIndexOffset: inFocus ? 550 : ((chs && chsHighlight) ? 400 : 0)
       });
       marker.on('click', (ev) => {
+        if(ev && ev.originalEvent) L.DomEvent.stopPropagation(ev.originalEvent);
+        L.DomEvent.stopPropagation(ev);
+        window.__ignoreMapClick = true;
+        setTimeout(() => { window.__ignoreMapClick = false; }, 0);
         const oe = ev && ev.originalEvent;
         const additive = !!(oe && (oe.ctrlKey || oe.metaKey)) || selectMode;
         if(additive){
@@ -1628,6 +1697,7 @@ function showDetail(f, rows, opts){
     body.appendChild(tr);
   });
   renderCompetitorStrip(f, lastDetail.rows);
+  setPinFocus(f, window.__pinGaps || []);
   openPinCard();
 }
 
@@ -2101,6 +2171,11 @@ document.getElementById('deskModal').addEventListener('click', (e) => {
 document.getElementById('closePinBtn').onclick = closePinCard;
 document.getElementById('pinModal').addEventListener('click', (e) => {
   if(e.target.id === 'pinModal') closePinCard();
+});
+// Click empty map background closes pin card + clears focus
+map.on('click', () => {
+  if(window.__ignoreMapClick) return;
+  if(document.getElementById('pinModal')?.classList.contains('open')) closePinCard();
 });
 document.getElementById('pinAddSelBtn').onclick = () => {
   if(!lastDetail){ toast('Tap a pin first'); return; }
