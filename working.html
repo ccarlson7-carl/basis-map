@@ -412,6 +412,9 @@
   #selectModeBtn.on {
     background:#bf8700; color:#fff; border-color:#bf8700;
   }
+  #desktopDeskBtn.on, #mobileDeskBtn.on, #sidebarDeskBtn.on {
+    background:#0969da; color:#fff; border-color:#0969da;
+  }
   #desktopBar #desktopDeskBtn, #mobileBar #mobileDeskBtn, #mobileBar #selectModeBtn {
     background:rgba(255,255,255,.96); color:var(--text); border:1px solid var(--border);
     border-radius:999px; padding:10px 14px; font-size:14px; box-shadow:0 4px 16px rgba(0,0,0,.12);
@@ -434,7 +437,7 @@
     <div id="sheetHandle"></div>
     <h1>Cash Basis Map</h1>
     <div class="ver"><span class="pill">v1.5-working</span><span>experimental · v1.4 locked</span></div>
-    <div class="sub">Empty bubble · stacked months · tap pin for card · Desk for CHS tools</div>
+    <div class="sub">Empty bubble · stacked months · tap pin for card · CHS assets for desk tools</div>
 
     <label>Map mode</label>
     <div class="chips" id="modes"></div>
@@ -479,7 +482,7 @@
       <button class="secondary" id="sidebarListBtn" type="button">Bids in view</button>
     </div>
     <div class="actions" style="margin-top:8px">
-      <button class="secondary" id="sidebarDeskBtn" type="button">Desk</button>
+      <button class="secondary" id="sidebarDeskBtn" type="button">CHS assets</button>
     </div>
     <div class="stats" id="stats"></div>
 
@@ -493,12 +496,12 @@
     </div>
   </aside>
   <div id="mapWrap">
-    <div id="desktopBar"><button type="button" id="desktopBriefBtn">Daily brief</button><button type="button" id="desktopListBtn">Bids in view</button><button type="button" id="desktopDeskBtn">Desk</button></div>
+    <div id="desktopBar"><button type="button" id="desktopBriefBtn">Daily brief</button><button type="button" id="desktopListBtn">Bids in view</button><button type="button" id="desktopDeskBtn">CHS assets</button></div>
     <div id="mobileBar">
       <button id="toggleFilters">Filters</button>
       <button id="mobileBriefBtn">Daily brief</button>
       <button id="listViewBtn">Bids in view</button>
-      <button id="mobileDeskBtn" type="button">Desk</button>
+      <button id="mobileDeskBtn" type="button">CHS assets</button>
       <button id="selectModeBtn" type="button">Select</button>
     </div>
     <div id="map"></div>
@@ -544,15 +547,15 @@
   <div id="deskSheet" role="dialog" aria-labelledby="deskTitle">
     <div class="sheet-top">
       <div class="sheet-handle"></div>
-      <h3 id="deskTitle">Desk</h3>
-      <div class="sheet-meta">CHS tools · gap radar · sources</div>
-      <div class="chips" id="chsRow" style="margin:8px 0 10px"><span class="chip toggle" id="chsDeskBtn" role="button" tabindex="0">CHS desk</span></div>
+      <h3 id="deskTitle">CHS assets</h3>
+      <div class="sheet-meta">CHS locations · gap radar · sources</div>
+      <div class="chips" id="chsRow" style="margin:8px 0 10px"><span class="chip toggle" id="chsDeskBtn" role="button" tabindex="0">CHS mode</span></div>
       <div class="sheet-actions">
         <button class="secondary" id="closeDeskBtn" type="button">Close</button>
       </div>
     </div>
     <div id="deskBody">
-      <div class="note" id="deskOffNote">CHS desk is off. Turn it on above to use locations list, gap radar, and copy tools. Sources stay available below.</div>
+      <div class="note" id="deskOffNote">CHS mode is off. Turn it on above for locations, gap radar, and copy tools. Sources stay available below.</div>
       <div id="deskTools">
         <button class="secondary" id="copyDeskBtn" type="button">Copy desk sheet</button>
         <div id="chsLocations" aria-label="CHS locations">
@@ -784,14 +787,22 @@ function updateDeskChrome(){
   const gapsBtn = document.getElementById('copyGapsBtn');
   if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
 }
+function syncChsNavButtons(){
+  ['desktopDeskBtn','mobileDeskBtn','sidebarDeskBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('on', !!chsHighlight);
+  });
+}
 function wireChsDesk(){
   const btn = document.getElementById('chsDeskBtn');
   if(!btn) return;
   btn.classList.toggle('on', chsHighlight);
+  syncChsNavButtons();
   updateDeskChrome();
   btn.onclick = () => {
     chsHighlight = !chsHighlight;
     btn.classList.toggle('on', chsHighlight);
+    syncChsNavButtons();
     updateDeskChrome();
     renderGapRadar();
     scheduleRender();
@@ -800,6 +811,11 @@ function wireChsDesk(){
   renderGapRadar();
 }
 function openDesk(){
+  // Opening CHS assets turns analysis on; stays on after close
+  chsHighlight = true;
+  const chsBtn = document.getElementById('chsDeskBtn');
+  if(chsBtn) chsBtn.classList.add('on');
+  syncChsNavButtons();
   updateDeskChrome();
   renderGapRadar();
   if(typeof renderSources === 'function') renderSources();
@@ -812,6 +828,7 @@ function openDesk(){
   if(!m) return;
   m.classList.add('open');
   m.setAttribute('aria-hidden','false');
+  scheduleRender();
 }
 function closeDesk(){
   const m = document.getElementById('deskModal');
