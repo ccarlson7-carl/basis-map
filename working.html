@@ -845,7 +845,7 @@ function computeChsLocations(){
   FACILITIES.forEach(f => {
     if(selType.size && !selType.has(f.facility_type)) return;
     if(!isChsFacility(f)) return;
-    const bids = filteredBids(f);
+    const bids = filteredBids(f, {ignoreSearch:true});
     if(!bids.length) return;
     const comms = [...new Set(bids.map(b => b.commodity))]
       .sort()
@@ -914,7 +914,7 @@ function computeGapRadar(limit){
   FACILITIES.forEach(f => {
     if(selType.size && !selType.has(f.facility_type)) return;
     if(isChsFacility(f)) return;
-    const bids = filteredBids(f).filter(b => !isChsBid(b));
+    const bids = filteredBids(f, {ignoreSearch:true}).filter(b => !isChsBid(b));
     if(!bids.length) return;
     nonChs.push({ f, bids });
   });
@@ -922,8 +922,8 @@ function computeGapRadar(limit){
   FACILITIES.forEach(f => {
     if(selType.size && !selType.has(f.facility_type)) return;
     if(!isChsFacility(f)) return;
-    const use = filteredBids(f).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
-    const chsList = use.length ? use : filteredBids(f);
+    const use = filteredBids(f, {ignoreSearch:true}).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+    const chsList = use.length ? use : filteredBids(f, {ignoreSearch:true});
     chsList.forEach(cb => {
       nonChs.forEach(({ f:g, bids }) => {
         if(g.location !== f.location || g.state !== f.state) return;
@@ -1072,7 +1072,7 @@ function facilityGapsForPin(f, rows){
       // CHS focus wants non-CHS comps; competitor focus wants CHS comps
       if(focusChs && gIsChs) return;
       if(!focusChs && !gIsChs) return;
-      const obids = filteredBids(g).filter(b => {
+      const obids = filteredBids(g, {ignoreSearch:true}).filter(b => {
         if(b.commodity !== fb.commodity || b.delivery !== fb.delivery) return false;
         if(focusChs) return !isChsBid(b);
         return isChsBid(b) || isChsEntityName(g.ownership);
@@ -1198,8 +1198,8 @@ function buildDeskSheetText(){
   FACILITIES.forEach(f => {
     if(selType.size && !selType.has(f.facility_type)) return;
     if(!isChsFacility(f)) return;
-    const bids = filteredBids(f).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
-    const list = bids.length ? bids : (isChsFacility(f) ? filteredBids(f) : []);
+    const bids = filteredBids(f, {ignoreSearch:true}).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+    const list = bids.length ? bids : (isChsFacility(f) ? filteredBids(f, {ignoreSearch:true}) : []);
     list.forEach(b => {
       chsN++;
       lines.push(`${f.location}, ${f.state} · ${b.commodity} ${b.delivery} · ${fmtBasis(b.basis)} (${b.entity})`);
@@ -1289,8 +1289,10 @@ function updateDodNote(){
 function selectedOptions(sel){ return [...sel.selectedOptions].map(o => o.value); }
 function bidKey(b){ return [b.entity, b.commodity, b.delivery, b.futures_month||''].join('|'); }
 
-function filteredBids(f){
-  const q = document.getElementById('q').value.trim().toLowerCase();
+function filteredBids(f, opts){
+  const options = opts || {};
+  const ignoreSearch = !!options.ignoreSearch;
+  const q = ignoreSearch ? '' : document.getElementById('q').value.trim().toLowerCase();
   const ents = selectedOptions(document.getElementById('entity'));
   const minb = parseFloat(document.getElementById('minb').value);
   const maxb = parseFloat(document.getElementById('maxb').value);
