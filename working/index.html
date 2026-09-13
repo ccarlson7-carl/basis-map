@@ -280,7 +280,10 @@
   .brief-line .chg-up { color: #1a7f37; font-weight: 600; }
   .brief-line .chg-down { color: #cf222e; font-weight: 600; }
   .brief-line { font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
-  #competitorsBox { margin-top: 12px; }
+  .pin-gap-summary { font-size: 12px; margin: 0 0 8px; padding: 8px 10px; background:#f6f8fa; border-radius:8px; border:1px solid var(--border); }
+  .pin-gap-summary .gap-over, .pin-gap-summary .gap-under { font-weight: 700; }
+  #competitorsBox { margin: 0 0 12px; max-height: 220px; overflow: auto; -webkit-overflow-scrolling: touch; }
+  #competitorsBox { margin-top: 0; }
   #competitorsBox h3 {
     margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
     color: var(--muted); font-weight: 600;
@@ -588,13 +591,14 @@
       </div>
     </div>
     <div id="pinBody">
+      <div id="pinGapSummary" class="pin-gap-summary" style="display:none"></div>
+      <div id="competitorsBox" style="display:none"></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Entity</th><th>Comm</th><th>Deliv</th><th>Fut</th><th>Basis</th><th>Δ</th></tr></thead>
           <tbody id="dbody"></tbody>
         </table>
       </div>
-      <div id="competitorsBox" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -1126,11 +1130,32 @@ function buildCompetitorStrip(f, rows){
 
 function renderCompetitorStrip(f, rows){
   const box = document.getElementById('competitorsBox');
+  const sum = document.getElementById('pinGapSummary');
   const copyBtn = document.getElementById('pinCopyGapsBtn');
   if(!box) return;
   const gaps = facilityGapsForPin(f, rows);
   window.__pinGaps = gaps;
   if(copyBtn) copyBtn.classList.toggle('show', gaps.length > 0);
+  if(sum){
+    if(!gaps.length){
+      sum.style.display = 'none';
+      sum.innerHTML = '';
+    } else {
+      let over = 0, under = 0, even = 0;
+      gaps.forEach(r => {
+        if(r.gap > 0.0005) over++;
+        else if(r.gap < -0.0005) under++;
+        else even++;
+      });
+      const focusChs = isChsFacility(f) || (rows||[]).some(isChsBid);
+      sum.style.display = 'block';
+      sum.innerHTML = `<strong>Gaps</strong> · ${gaps.length} nearby` +
+        (over ? ` · <span class="gap-over">${over} over</span>` : '') +
+        (under ? ` · <span class="gap-under">${under} under</span>` : '') +
+        (even ? ` · ${even} even` : '') +
+        ` <span style="color:var(--muted)">(${focusChs ? 'vs competitors' : 'vs CHS'} ≤25mi)</span>`;
+    }
+  }
   if(!gaps.length){
     box.style.display = 'none';
     box.innerHTML = '';
@@ -1138,7 +1163,7 @@ function renderCompetitorStrip(f, rows){
   }
   box.style.display = 'block';
   const focusChs = isChsFacility(f) || (rows||[]).some(isChsBid);
-  let html = `<h3>Gaps</h3><div class="comp-empty" style="margin-bottom:6px">${focusChs ? 'vs nearby competitors (≤25mi / same town)' : 'vs nearby CHS (≤25mi / same town)'} · ${gaps.length} row${gaps.length===1?'':'s'}</div>`;
+  let html = `<h3>Gap details</h3><div class="comp-empty" style="margin-bottom:6px">${focusChs ? 'vs nearby competitors (≤25mi / same town)' : 'vs nearby CHS (≤25mi / same town)'} · ${gaps.length} row${gaps.length===1?'':'s'}</div>`;
   gaps.slice(0, 40).forEach(r => {
     const ph = gapPhrase(r.gap);
     const near = r.sameTown ? 'same town' : `~${r.miles.toFixed(0)}mi`;
@@ -1151,6 +1176,7 @@ function renderCompetitorStrip(f, rows){
   if(gaps.length > 40) html += `<div class="comp-empty">+${gaps.length-40} more (use Copy gaps)</div>`;
   box.innerHTML = html;
 }
+
 
 function buildDeskSheetText(){
   const sum = filterLabelSummary();
