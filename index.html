@@ -267,6 +267,11 @@
   #competitorsBox .comp-empty { color: var(--muted); font-size: 12px; }
   #copyDeskBtn { display: none; }
   #copyDeskBtn.show { display: inline-flex; }
+  #copyGapsBtn { display: none; font-size: 12px; padding: 4px 8px; margin-left: 6px; }
+  #copyGapsBtn.show { display: inline-flex; }
+  #gapRadar h3 { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #gapRadar .gap-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  #gapRadar .gap-head h3 { margin:0; }
 
 
 
@@ -523,6 +528,8 @@ function wireChsDesk(){
     chsHighlight = !chsHighlight;
     btn.classList.toggle('on', chsHighlight);
     if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+    const gapsBtn = document.getElementById('copyGapsBtn');
+    if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
     renderGapRadar();
     scheduleRender();
   };
@@ -676,8 +683,10 @@ function renderGapRadar(){
   const list = document.getElementById('gapRadarList');
   const meta = document.getElementById('gapRadarMeta');
   const deskBtn = document.getElementById('copyDeskBtn');
+  const gapsBtn = document.getElementById('copyGapsBtn');
   if(!box || !list) return;
   if(deskBtn) deskBtn.classList.toggle('show', !!chsHighlight);
+  if(gapsBtn) gapsBtn.classList.toggle('show', !!chsHighlight);
   if(!chsHighlight){
     box.classList.remove('open');
     list.innerHTML = '';
@@ -1208,7 +1217,7 @@ function showDetail(f, rows, opts){
   }
 }
 
-async function copyText(text){
+async async function copyText(text){
   try {
     await navigator.clipboard.writeText(text);
     toast('Copied');
@@ -1236,9 +1245,39 @@ document.getElementById('copyLocation').onclick = () => {
   copyText(`${f.ownership} · ${f.location}, ${f.state}`);
 };
 
+
+function buildGapRadarTsv(rows){
+  const list = rows || window.__lastGaps || computeGapRadar(25);
+  const header = ['Location','State','Commodity','Delivery','CHS_basis','Competitor','Comp_basis','Gap','CHS_vs','Miles','Same_town'];
+  const lines = [header.join('\t')];
+  list.forEach(r => {
+    const vs = r.gap > 0.004 ? 'over' : (r.gap < -0.004 ? 'under' : 'flat');
+    lines.push([
+      r.chsFac.location,
+      r.chsFac.state,
+      r.commodity,
+      r.delivery,
+      Number(r.chs_basis).toFixed(2),
+      r.competitor,
+      Number(r.comp_basis).toFixed(2),
+      (r.gap>=0?'+':'') + Number(r.gap).toFixed(2),
+      vs,
+      r.sameTown ? '0' : Number(r.miles).toFixed(1),
+      r.sameTown ? 'yes' : 'no'
+    ].join('\t'));
+  });
+  return lines.join('\n');
+}
+
 document.getElementById('copyDeskBtn').onclick = () => {
   const text = buildDeskSheetText();
   copyText(text);
+};
+document.getElementById('copyGapsBtn').onclick = () => {
+  const rows = window.__lastGaps && window.__lastGaps.length ? window.__lastGaps : computeGapRadar(25);
+  if(!rows.length){ toast('No gaps to copy'); return; }
+  copyText(buildGapRadarTsv(rows));
+  toast('Gaps copied (columns)');
 };
 
 map.on('zoomend', () => scheduleRender(false));
