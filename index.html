@@ -1277,7 +1277,6 @@ document.getElementById('copyGapsBtn').onclick = () => {
   const rows = window.__lastGaps && window.__lastGaps.length ? window.__lastGaps : computeGapRadar(25);
   if(!rows.length){ toast('No gaps to copy'); return; }
   copyText(buildGapRadarTsv(rows));
-  toast('Gaps copied (columns)');
 };
 
 map.on('zoomend', () => scheduleRender(false));
