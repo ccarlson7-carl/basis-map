@@ -1763,20 +1763,18 @@ function searchFacilities(q){
 function jumpToFacility(f, opts){
   if(!f || f.lat==null || f.lon==null) return;
   const options = opts || {};
-  // Close search UI first so map is visible (mobile + desktop)
+  // Always close search UI; clear Search so substring matches (Alma→Talmage) cannot linger
+  const q = document.getElementById('q');
+  if(q) q.value = '';
+  hideSearchResults();
   if(options.fromSearch){
     closeSidebarAfterJump();
-    // Clear Search so it cannot blank Gaps / hide nearby pins (e.g. Alma also matches Talmage)
-    const q = document.getElementById('q');
-    if(q){ q.value = ''; }
-    hideSearchResults();
-  } else {
-    hideSearchResults();
   }
   map.setView([f.lat, f.lon], Math.max(map.getZoom(), 10.5), { animate:true });
   const bids = filteredBids(f);
   const { rows } = computeChanges(f, bids.length ? bids : (f.bids||[]).filter(b => b.date === allDates[allDates.length-1]));
   showDetail(f, rows, options);
+  scheduleRender(false);
 }
 function renderSearchResults(hits){
   const box = document.getElementById('qResults');
