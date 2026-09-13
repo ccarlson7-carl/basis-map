@@ -284,6 +284,10 @@
   #competitorsBox .comp-head { font-weight: 600; margin-bottom: 4px; }
   #competitorsBox .comp-line { color: var(--text); padding: 2px 0; line-height: 1.35; }
   #competitorsBox .comp-empty { color: var(--muted); font-size: 12px; }
+  #competitorsBox .gap-line { font-size: 12px; padding: 3px 0; line-height: 1.35; border-bottom: 1px solid var(--border); }
+  #competitorsBox .gap-line:last-child { border-bottom: 0; }
+  #pinCopyGapsBtn { display: none; }
+  #pinCopyGapsBtn.show { display: inline-flex; }
   #copyDeskBtn { display: none; }
   #copyDeskBtn.show { display: inline-flex; }
   #copyGapsBtn { display: none; font-size: 12px; padding: 4px 8px; margin-left: 6px; }
@@ -573,6 +577,7 @@
       <div class="sheet-actions">
         <button class="secondary" id="copyBids" type="button">Copy bids</button>
         <button class="secondary" id="copyLocation" type="button">Copy location</button>
+        <button class="secondary" id="pinCopyGapsBtn" type="button">Copy gaps</button>
         <button class="secondary" id="pinAddSelBtn" type="button">Add to selection</button>
         <button class="secondary" id="closePinBtn" type="button">Close</button>
       </div>
@@ -1036,81 +1041,109 @@ function renderGapRadar(){
 }
 
 /** Competitors under pin detail for CHS bids. */
-function buildCompetitorStrip(f, rows){
-  const hasChs = isChsFacility(f) || (rows||[]).some(isChsBid);
-  if(!hasChs) return null;
-  const chsBids = (rows||[]).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
-  const use = chsBids.length ? chsBids : (isChsFacility(f) ? rows : []);
-  if(!use || !use.length) return null;
+function facilityGapsForPin(f, rows){
+  // Gaps for the selected facility vs nearby posts (same commodity×delivery).
+  // CHS pin → vs non-CHS competitors. Non-CHS pin → vs nearby CHS.
+  const focusChs = isChsFacility(f) || (rows||[]).some(isChsBid);
+  const focusBids = (() => {
+    if(focusChs){
+      const chsBids = (rows||[]).filter(b => isChsBid(b) || isChsEntityName(f.ownership));
+      return chsBids.length ? chsBids : (rows||[]);
+    }
+    return rows||[];
+  })();
+  if(!focusBids.length) return [];
 
-  const blocks = [];
-  use.forEach(cb => {
-    // gather competitors
-    const same = [];
-    const near = [];
+  const gaps = [];
+  focusBids.forEach(fb => {
     FACILITIES.forEach(g => {
       if(g === f) return;
-      if(isChsFacility(g)) return;
       if(selType.size && !selType.has(g.facility_type)) return;
-      const obids = filteredBids(g).filter(b => !isChsBid(b) && b.commodity===cb.commodity && b.delivery===cb.delivery);
+      const gIsChs = isChsFacility(g);
+      // CHS focus wants non-CHS comps; competitor focus wants CHS comps
+      if(focusChs && gIsChs) return;
+      if(!focusChs && !gIsChs) return;
+      const obids = filteredBids(g).filter(b => {
+        if(b.commodity !== fb.commodity || b.delivery !== fb.delivery) return false;
+        if(focusChs) return !isChsBid(b);
+        return isChsBid(b) || isChsEntityName(g.ownership);
+      });
       if(!obids.length) return;
       const sameTown = g.location===f.location && g.state===f.state;
       const miles = (f.lat!=null && g.lat!=null) ? haversineMiles(f.lat,f.lon,g.lat,g.lon) : 9999;
+      if(!sameTown && miles > 25.01) return;
       obids.forEach(ob => {
-        const item = { g, ob, miles, gap: Number(cb.basis)-Number(ob.basis), sameTown };
-        if(sameTown) same.push(item);
-        else if(miles <= 25.01) near.push(item);
+        const chsBasis = focusChs ? Number(fb.basis) : Number(ob.basis);
+        const compBasis = focusChs ? Number(ob.basis) : Number(fb.basis);
+        const gap = chsBasis - compBasis;
+        gaps.push({
+          focusChs,
+          commodity: fb.commodity,
+          delivery: fb.delivery,
+          focus_basis: Number(fb.basis),
+          other_basis: Number(ob.basis),
+          other_entity: ob.entity,
+          other_own: g.ownership,
+          other_loc: g.location,
+          other_state: g.state,
+          gap,
+          miles: sameTown ? 0 : miles,
+          sameTown,
+          // radar-compatible fields for formatting
+          chsFac: focusChs ? f : g,
+          compFac: focusChs ? g : f,
+          chs_basis: chsBasis,
+          comp_basis: compBasis,
+          competitor: focusChs ? ob.entity : fb.entity
+        });
       });
     });
-    let picks = same;
-    if(!picks.length){
-      near.sort((a,b) => a.miles - b.miles || Math.abs(b.gap)-Math.abs(a.gap));
-      // nearest up to ~3 competitors (unique facilities)
-      const seen = new Set();
-      picks = [];
-      for(const it of near){
-        const k = it.g.ownership+'|'+it.g.location;
-        if(seen.has(k)) continue;
-        seen.add(k);
-        picks.push(it);
-        if(picks.length >= 3) break;
-      }
-    } else {
-      picks.sort((a,b) => Math.abs(b.gap)-Math.abs(a.gap));
-    }
-    blocks.push({ cb, picks });
   });
-  return blocks;
+
+  // Dedupe
+  const seen = new Set();
+  const out = [];
+  gaps.forEach(r => {
+    const k = [r.commodity, r.delivery, r.other_entity, r.other_loc, r.other_state, r.focus_basis, r.other_basis].join('|');
+    if(seen.has(k)) return;
+    seen.add(k);
+    out.push(r);
+  });
+  out.sort((a,b) => (a.sameTown===b.sameTown ? 0 : (a.sameTown?-1:1)) || Math.abs(b.gap)-Math.abs(a.gap) || a.miles-b.miles);
+  return out;
+}
+
+function buildCompetitorStrip(f, rows){
+  // Kept name for callers; returns gap rows for pin card
+  const gaps = facilityGapsForPin(f, rows);
+  return gaps.length ? gaps : null;
 }
 
 function renderCompetitorStrip(f, rows){
   const box = document.getElementById('competitorsBox');
+  const copyBtn = document.getElementById('pinCopyGapsBtn');
   if(!box) return;
-  const blocks = buildCompetitorStrip(f, rows);
-  if(!blocks){
+  const gaps = facilityGapsForPin(f, rows);
+  window.__pinGaps = gaps;
+  if(copyBtn) copyBtn.classList.toggle('show', gaps.length > 0);
+  if(!gaps.length){
     box.style.display = 'none';
     box.innerHTML = '';
     return;
   }
   box.style.display = 'block';
-  let html = '<h3>Competitors</h3>';
-  let any = false;
-  blocks.forEach(({ cb, picks }) => {
-    html += `<div class="comp-block"><div class="comp-head">${cb.commodity} ${cb.delivery} · CHS ${fmtBasis(cb.basis)}</div>`;
-    if(!picks.length){
-      html += `<div class="comp-empty">No same-town or ≤25mi competitor posts</div>`;
+  const focusChs = isChsFacility(f) || (rows||[]).some(isChsBid);
+  let html = `<h3>Gaps</h3><div class="comp-empty" style="margin-bottom:6px">${focusChs ? 'vs nearby competitors (≤25mi / same town)' : 'vs nearby CHS (≤25mi / same town)'} · ${gaps.length} row${gaps.length===1?'':'s'}</div>`;
+  gaps.slice(0, 40).forEach(r => {
+    const ph = gapPhrase(r.gap);
+    const near = r.sameTown ? 'same town' : `~${r.miles.toFixed(0)}mi`;
+    if(focusChs){
+      html += `<div class="gap-line"><strong>${r.commodity} ${r.delivery}</strong> · CHS ${fmtBasis(r.focus_basis)} vs ${r.other_entity} (${r.other_loc}) ${fmtBasis(r.other_basis)} · <span class="${ph.cls}">${ph.text}</span> · ${near}</div>`;
     } else {
-      any = true;
-      picks.forEach(it => {
-        const ph = gapPhrase(it.gap);
-        const where = it.sameTown
-          ? `${it.ob.entity} · ${it.g.location}`
-          : `${it.ob.entity} · ${it.g.location} (~${it.miles.toFixed(0)}mi)`;
-        html += `<div class="comp-line">${where}: ${fmtBasis(it.ob.basis)} <span class="${ph.cls}">(${ph.text})</span></div>`;
-      });
+      html += `<div class="gap-line"><strong>${r.commodity} ${r.delivery}</strong> · ${f.ownership} ${fmtBasis(r.focus_basis)} vs CHS ${r.other_loc} ${fmtBasis(r.other_basis)} · <span class="${ph.cls}">${ph.text}</span> · ${near}</div>`;
     }
-    html += '</div>';
   });
+  if(gaps.length > 40) html += `<div class="comp-empty">+${gaps.length-40} more (use Copy gaps)</div>`;
   box.innerHTML = html;
 }
 
@@ -1563,6 +1596,24 @@ async function copyText(text){
   }
 }
 
+document.getElementById('pinCopyGapsBtn').onclick = () => {
+  const gaps = window.__pinGaps || [];
+  if(!gaps.length){ toast('No gaps for this pin'); return; }
+  const header = ['Commodity','Delivery','Focus_basis','Other','Other_loc','Other_basis','Gap','Miles','Same_town'];
+  const lines = [header.join('\t')];
+  gaps.forEach(r => {
+    lines.push([
+      r.commodity, r.delivery,
+      Number(r.focus_basis).toFixed(2),
+      r.other_entity, `${r.other_loc} ${r.other_state}`,
+      Number(r.other_basis).toFixed(2),
+      (r.gap>=0?'+':'')+Number(r.gap).toFixed(2),
+      r.sameTown ? '0' : Number(r.miles).toFixed(1),
+      r.sameTown ? 'yes' : 'no'
+    ].join('\t'));
+  });
+  copyText(lines.join('\n'));
+};
 document.getElementById('copyBids').onclick = () => {
   if(!lastDetail){ toast('Tap a pin first'); return; }
   const { f, rows } = lastDetail;
